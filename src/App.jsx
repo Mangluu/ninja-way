@@ -33,7 +33,7 @@ export default function App() {
 
   const act = () => {
     if (!near) return
-    if (near.type === 'sahloka') { try { whoosh() } catch {}; setLeaving(true); setTimeout(() => { window.location.href = near.link }, 1100) }
+    if (near.type === 'sahloka') { try { whoosh() } catch {}; setLeaving(true); window.open(near.link, '_blank', 'noopener'); setTimeout(() => setLeaving(false), 1200) }
     else { try { ping() } catch {}; window.open(near.link, '_blank', 'noopener') }
   }
 
