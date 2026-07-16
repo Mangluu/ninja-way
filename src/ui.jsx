@@ -9,6 +9,11 @@ export function Intro({ onEnter }) {
         <p className="tagline">{profile.title}</p>
         <button className="enter-btn" onClick={onEnter}>Enter the village →</button>
         <p className="hint-sm">WASD / arrows to move · drag to look · scroll to zoom</p>
+        <div className="intro-links">
+          <a href={profile.links.github} target="_blank" rel="noopener">GitHub ↗</a>
+          <a href={profile.links.linkedin} target="_blank" rel="noopener">LinkedIn ↗</a>
+          <span className="in-a-hurry">in a hurry? the essentials are one click away</span>
+        </div>
       </div>
     </div>
   )

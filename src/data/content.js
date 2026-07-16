@@ -10,6 +10,7 @@ export const profile = {
   links: {
     sahloka: 'https://sahloka.com',
     github: 'https://github.com/Mangluu',
+    linkedin: 'https://www.linkedin.com/in/i-am-manglu/',
     email: 'mailto:shivangzephyr@gmail.com',
   },
 }

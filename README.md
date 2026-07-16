@@ -1,14 +1,20 @@
-# The Ninja Way — Shivang Gupta's 3D portfolio 🥷
+# The Ninja Way 🥷
 
-A walkable 3D hero's-journey portfolio built with React + Three.js
-([react-three-fiber](https://docs.pmnd.rs/react-three-fiber)). You start in
-Greater Noida, cross **THE SNAP**, walk the winning streak, migrate to Finland,
-and climb to the **Sahloka** summit. Every trophy is a place you can step into.
+A walkable 3D portfolio, built as a stylized shinobi village you explore in the browser. Wander the village, find projects as glowing waypoints, and climb the torii avenue to the summit gate.
 
-**Controls:** `WASD` move · drag to look · scroll to glide · `E` enter a memory ·
-`F` for a surprise ⚽ · ↑↑↓↓←→←→BA for another 🍥
+**Live → [mangluu.github.io/ninja-way](https://mangluu.github.io/ninja-way/)**
 
-## Run it
+**Controls:** `WASD` / arrows to move · drag to look · scroll to zoom · `Space` to jump · `E` to interact
+
+## Built with
+
+- **React + [react-three-fiber](https://docs.pmnd.rs/react-three-fiber)** on Three.js / WebGL
+- Cel/toon shading (`MeshToonMaterial` + gradient ramp) with inverted-hull outlines
+- Post-processing via `@react-three/postprocessing` — N8AO ambient occlusion, selective bloom, AgX tone-mapping, SMAA
+- A custom third-person controller: movement, jump + gravity, a climbable height-field, soft collision, and proximity-based interactions
+- **All 3D art is original / procedural** — no third-party model assets, so it's license-clean anywhere on the web
+
+## Run locally
 
 ```bash
 npm install
@@ -16,28 +22,12 @@ npm run dev      # http://localhost:5173
 npm run build    # → dist/
 ```
 
-## Make it yours
+## Structure
 
-Everything you'd want to change lives in **one file**:
-[`src/data/content.js`](src/data/content.js) — your bio, the five sagas (and
-their colour palettes), the project shrines, the trophies and the story markers.
-Add a shrine by dropping an object into the `shrines` array with an `x` / `z`
-position and a `saga`; the world places and lights it automatically.
+- `src/data/content.js` — projects, palette, world config
+- `src/world/` — `Scene.jsx` (sky, fog, lights, layout) · `props.jsx` (village structures) · `Shinobi.jsx` (the character) · `Controller.jsx` (movement + camera) · `SahlokaGate.jsx` (the summit)
+- `src/effects.jsx` — the post-processing stack
 
-The world itself: `src/world/` — `World.jsx` (sky, fog, ground, colour grade),
-`Player.jsx` (movement + interaction), `Structures.jsx` (shrines, trophies,
-gates, beacon).
+## Deploy
 
-## Deploy (GitHub Pages, free)
-
-`vite.config.js` uses a relative `base`, so it works at either URL:
-
-- **Project page** → push this folder as a repo (e.g. `Mangluu/shivang`), and it
-  serves at `mangluu.github.io/shivang/`.
-- **User page** → put it in a repo named `mangluu.github.io` for `mangluu.github.io/`.
-
-A GitHub Actions workflow is included at `.github/workflows/deploy.yml`. After
-the first push, go to **Settings → Pages → Build and deployment → Source:
-GitHub Actions**. Every push to `main` then builds and deploys automatically.
-
-Believe it. 🍥
+Ships to GitHub Pages via `.github/workflows/deploy.yml` on every push to `main` (`vite.config.js` uses a relative `base`).
