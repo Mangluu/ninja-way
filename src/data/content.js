@@ -68,13 +68,13 @@ export const projects = [
   {
     id: 'sayit', name: 'Say It, Slay It', tag: 'Game Jam · Leiden · Winner',
     blurb: 'Shout something ridiculous, the AI forges it into a weapon, and you fling it at a friend. A game that is useless without human creativity — then it won a jam.',
-    link: 'https://github.com/GameAISchool2026members/Say-It-Slay-It', cta: 'See the code', color: C.vermilionLite,
+    link: 'https://github.com/Mangluu/Say-It-Slay-It', cta: 'See the code', color: C.vermilionLite,
     x: -9, z: 34,
   },
   {
     id: 'explaindb', name: 'ExplainDB', tag: 'Aalto AI Hackathon',
     blurb: 'Talk to your database like you talk to ChatGPT — but better: graphs, recommendations, plain language. 48 hours, 2 developers, a lot of pizza.',
-    link: 'https://github.com/Mangluu', cta: 'About it', color: C.indigo,
+    link: 'https://github.com/Mangluu/ExplainDB', cta: 'View on GitHub', color: C.indigo,
     x: 9, z: 40,
   },
   {
