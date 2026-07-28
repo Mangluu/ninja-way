@@ -80,7 +80,7 @@ export const projects = [
   {
     id: 'haptics', name: 'Virtual Playing, Real Touch', tag: 'CHI 2026 · Barcelona',
     blurb: 'My PhD work on the haptics of musical instruments — play virtual instruments and feel how touch changes VR. Watching people get competitive with it was the best part.',
-    link: 'https://doi.org/10.1109/PEEIC47157.2019.8976471', cta: 'The research', color: C.gold,
+    link: 'https://dl.acm.org/doi/full/10.1145/3772363.3799160', cta: 'The research', color: C.gold,
     x: -8, z: 50,
   },
   {
