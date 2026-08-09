@@ -58,7 +58,9 @@ function GrandGate() {
       <mesh ref={ring3} position={[0, 5, 0]}><torusGeometry args={[4.9, 0.04, 8, 64]} /><meshBasicMaterial color={C.goldLite} toneMapped={false} transparent opacity={0.5} /></mesh>
 
       {/* beam */}
-      <mesh ref={beam} position={[0, 34, 0]}><cylinderGeometry args={[3.6, 1.1, 58, 28, 1, true]} /><meshBasicMaterial color={C.goldLite} transparent opacity={0.22} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
+      {/* Starts well above head height: an open additive cylinder that the camera
+          can stand inside washes the entire screen gold when you reach the gate. */}
+      <mesh ref={beam} position={[0, 46, 0]}><cylinderGeometry args={[3.6, 1.4, 56, 28, 1, true]} /><meshBasicMaterial color={C.goldLite} transparent opacity={0.22} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
 
       {/* floating wisps */}
       {Array.from({ length: 7 }).map((_, i) => (

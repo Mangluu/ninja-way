@@ -21,13 +21,26 @@ export default function Shinobi({ state }) {
     if (st.moving) {
       phase.current += dt * (6 + st.speed * 1.4)
       const sw = Math.sin(phase.current)
-      const amp = 0.55
+      const amp = st.sprinting ? 0.75 : 0.55
       if (legL.current) legL.current.rotation.x = sw * amp
       if (legR.current) legR.current.rotation.x = -sw * amp
-      if (armL.current) armL.current.rotation.x = -sw * amp * 0.8
-      if (armR.current) armR.current.rotation.x = sw * amp * 0.8
-      if (body.current) { body.current.position.y = Math.abs(Math.sin(phase.current)) * 0.06; body.current.rotation.x = 0.14 }
-      if (scarf.current) scarf.current.rotation.x = -0.5 - Math.sin(t * 6) * 0.15
+      if (st.sprinting) {
+        // The ninja run: arms pinned back, chest low. Eased into rather than
+        // snapped, so going from a jog to a sprint reads as one movement.
+        const back = 2.35
+        if (armL.current) armL.current.rotation.x += (back - armL.current.rotation.x) * 0.16
+        if (armR.current) armR.current.rotation.x += (back - armR.current.rotation.x) * 0.16
+        if (body.current) {
+          body.current.position.y = Math.abs(Math.sin(phase.current)) * 0.05
+          body.current.rotation.x += (0.44 - body.current.rotation.x) * 0.14
+        }
+        if (scarf.current) scarf.current.rotation.x = -1.15 - Math.sin(t * 9) * 0.12
+      } else {
+        if (armL.current) armL.current.rotation.x = -sw * amp * 0.8
+        if (armR.current) armR.current.rotation.x = sw * amp * 0.8
+        if (body.current) { body.current.position.y = Math.abs(Math.sin(phase.current)) * 0.06; body.current.rotation.x = 0.14 }
+        if (scarf.current) scarf.current.rotation.x = -0.5 - Math.sin(t * 6) * 0.15
+      }
     } else {
       const breathe = Math.sin(t * 1.6) * 0.5 + 0.5
       const damp = (r, to) => (r.rotation.x += (to - r.rotation.x) * 0.1)

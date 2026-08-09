@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { AdaptiveDpr } from '@react-three/drei'
 import * as THREE from 'three'
 import Scene from './world/Scene'
@@ -9,7 +9,23 @@ import { Intro, Hud, Prompt, Fade } from './ui'
 import { projects, SAHLOKA, ENV } from './data/content'
 import { blockers, pathLanterns, scrolls, bell } from './world/layout'
 import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect } from './sound.js'
+import { startMusic, setMusicIntensity } from './music.js'
 import './styles.css'
+
+// The score follows the climb: quiet in the village, full arrangement at the gate.
+// Lighting lanterns lifts it too, so the world answers what you do.
+function MusicDirector({ lit, total }) {
+  const { camera } = useThree()
+  const tick = useRef(0)
+  useFrame(() => {
+    if (tick.current++ % 20) return
+    const d = Math.hypot(camera.position.x - SAHLOKA.x, camera.position.z - SAHLOKA.z)
+    const climb = THREE.MathUtils.clamp(1 - (d - 14) / 62, 0, 1)   // 0 at the gate mouth, 1 at the summit
+    const warmth = total ? (lit / total) * 0.3 : 0
+    setMusicIntensity(Math.min(1, climb + warmth))
+  })
+  return null
+}
 
 // dev-only: expose the r3f state so the offscreen render loop can be driven for testing
 function DevHook() {
@@ -81,7 +97,7 @@ export default function App() {
     }
   }
 
-  const enter = () => { try { initAudio(); startAmbient() } catch {}; setEntered(true) }
+  const enter = () => { try { initAudio(); startAmbient(); startMusic() } catch {}; setEntered(true) }
 
   useEffect(() => {
     if (!entered) return
@@ -113,6 +129,7 @@ export default function App() {
         <color attach="background" args={[ENV.skyBottom]} />
         <fog attach="fog" args={[ENV.fog, 22, 135]} />
         <DevHook />
+        <MusicDirector lit={lit.size} total={pathLanterns.length} />
         {/* drops resolution instead of dropping frames on weaker GPUs */}
         <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>

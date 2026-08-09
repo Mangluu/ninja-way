@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import Shinobi from './Shinobi'
 import { WORLD, C } from '../data/content'
 import { groundHeight } from './layout'
-import { footstep } from '../sound.js'
+import { footstep, doubleJump } from '../sound.js'
 
 const SPEED = 6, SPRINT = 10, CHAR_R = 0.45, JUMP = 7.2, GRAVITY = 20
 const PITCH_MIN = 0.06, PITCH_MAX = 1.05
@@ -29,6 +29,9 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
   const wasGrounded = useRef(true)
   const step = useRef(0)
   const shake = useRef(0)
+  const jumps = useRef(0)        // 0 on the ground, 1 after a jump, 2 after the flip
+  const spacePrev = useRef(false)
+  const flip = useRef(1)         // 1 = finished; counts 0→1 through one somersault
   const keys = useRef({})
   const drag = useRef(null)
   const moveState = useRef({ moving: false, speed: 0 })
@@ -97,12 +100,30 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
 
     // vertical: gravity + jump, riding the hill height field
     const groundY = groundHeight(np.x, np.z)
-    if (k.Space && grounded.current) vy.current = JUMP
+    // Edge-triggered so holding space cannot pogo, and so the second press is
+    // recognisably a *second* press — that is the whole feel of a double jump.
+    const spaceNow = !!k.Space
+    if (spaceNow && !spacePrev.current) {
+      if (grounded.current) {
+        vy.current = JUMP
+        jumps.current = 1
+      } else if (jumps.current < 2) {
+        vy.current = JUMP * 0.9      // slightly softer, so it reads as a kick off nothing
+        jumps.current = 2
+        flip.current = 0             // somersault
+        try { doubleJump() } catch {}
+        const slot = dustState.current[dustNext.current % DUST_COUNT]
+        slot.t = 0; slot.x = np.x; slot.y = charY.current; slot.z = np.z
+        dustNext.current++
+      }
+    }
+    spacePrev.current = spaceNow
     const fallSpeed = vy.current
     vy.current -= GRAVITY * dt
     charY.current += vy.current * dt
     if (charY.current <= groundY) { charY.current = groundY; vy.current = 0 }
     grounded.current = charY.current <= groundY + 0.01
+    if (grounded.current) jumps.current = 0
 
     // Landing: the moment airborne becomes grounded, sell the impact.
     if (grounded.current && !wasGrounded.current && fallSpeed < -4) {
@@ -118,9 +139,16 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     wasGrounded.current = grounded.current
 
     if (moving) facing.current += shortAngle(facing.current, Math.atan2(move.x, move.z)) * (1 - Math.exp(-10 * dt))
-    if (rig.current) { rig.current.position.set(np.x, charY.current, np.z); rig.current.rotation.y = facing.current }
+    if (flip.current < 1) flip.current = Math.min(1, flip.current + dt * 2.1)
+    if (rig.current) {
+      rig.current.position.set(np.x, charY.current, np.z)
+      rig.current.rotation.y = facing.current
+      rig.current.rotation.x = flip.current < 1 ? flip.current * Math.PI * 2 : 0
+    }
     moveState.current.moving = moving && grounded.current
     moveState.current.speed = vel.current.length()
+    moveState.current.sprinting = moving && grounded.current && maxSpeed === SPRINT
+    moveState.current.airborne = !grounded.current
 
     // footsteps
     if (moving && grounded.current) {

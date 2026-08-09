@@ -204,3 +204,24 @@ export function collect() {
     o.connect(g).connect(out()); o.start(t); o.stop(t + 0.28)
   })
 }
+
+// A bus for the score, sitting under the same master gain so the mute button
+// silences music and effects together.
+export function musicBus() {
+  const c = initAudio()
+  const g = c.createGain()
+  g.gain.value = 0
+  g.connect(out())
+  return { ctx: c, gain: g }
+}
+
+// the kick off nothing — a short upward chirp for the second jump
+export function doubleJump() {
+  const c = initAudio(), t = c.currentTime
+  const o = c.createOscillator()
+  o.type = 'triangle'
+  o.frequency.setValueAtTime(430, t)
+  o.frequency.exponentialRampToValueAtTime(980, t + 0.16)
+  const g = c.createGain(); env(g, t, 0.006, 0.18, 0.13)
+  o.connect(g).connect(out()); o.start(t); o.stop(t + 0.26)
+}
