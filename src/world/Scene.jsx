@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { C, ENV, projects } from '../data/content'
 import { gradientMap } from '../lib/toon'
+import { groundMat, stone } from '../lib/materials'
 import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock } from './props'
 import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns } from './layout'
 import SahlokaGate from './SahlokaGate'
@@ -133,11 +134,11 @@ export default function Scene() {
       {/* ground + path */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 34]} receiveShadow>
         <planeGeometry args={[130, 150]} />
-        <Toon color={ENV.ground} />
+        <Toon color={ENV.ground} {...groundMat(7, 8)} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 30]} receiveShadow>
         <planeGeometry args={[4.4, 78]} />
-        <Toon color={C.dirt} />
+        <Toon color={C.dirt} {...stone(2, 34)} />
       </mesh>
 
       {/* entrance torii */}

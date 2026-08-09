@@ -31,3 +31,10 @@ npm run build    # → dist/
 ## Deploy
 
 Ships to GitHub Pages via `.github/workflows/deploy.yml` on every push to `main` (`vite.config.js` uses a relative `base`).
+
+## Credits
+
+The procedural texture engine — the runtime-generated wood, stone, plaster, roof
+tile, lacquer and paper that every surface in the village is drawn with — is
+adapted from **[KAGE](https://github.com/MengTo/kage) by [Meng To](https://github.com/MengTo)**,
+used with the author's kind permission. Thank you.
