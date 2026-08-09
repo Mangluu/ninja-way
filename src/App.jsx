@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
+import { AdaptiveDpr } from '@react-three/drei'
 import * as THREE from 'three'
 import Scene from './world/Scene'
 import Controller from './world/Controller'
@@ -105,12 +106,15 @@ export default function App() {
   return (
     <>
       <Canvas
-        shadows dpr={[1, 2]} camera={{ position: [0, 6, -11], fov: 52, near: 0.1, far: 400 }}
+        shadows dpr={[1, 2]} performance={{ min: 0.5 }}
+        camera={{ position: [0, 6, -11], fov: 52, near: 0.1, far: 400 }}
         gl={{ antialias: false, powerPreference: 'high-performance', toneMapping: THREE.NoToneMapping }}
       >
         <color attach="background" args={[ENV.skyBottom]} />
         <fog attach="fog" args={[ENV.fog, 22, 135]} />
         <DevHook />
+        {/* drops resolution instead of dropping frames on weaker GPUs */}
+        <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>
           <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} />
           <Controller spawn={[0, 0, -2]} blockers={blockers} interactables={interactables} onProximity={setNear} />

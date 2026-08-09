@@ -8,6 +8,8 @@ import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock, Scroll, Be
 import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell } from './layout'
 import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
+import LightBudget from './LightBudget'
+import LanternField from './LanternField'
 
 function Toon(p) { return <meshToonMaterial gradientMap={gradientMap} {...p} /> }
 
@@ -118,6 +120,7 @@ function ProjectSpot({ x, z, color }) {
 export default function Scene({ lit, found, rungAt = 0, raining = false }) {
   return (
     <>
+      <LightBudget />
       <Sky />
       <Mountains />
       <Petals count={window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 24 : 120} />
@@ -150,7 +153,7 @@ export default function Scene({ lit, found, rungAt = 0, raining = false }) {
       {sakura.map((s, i) => <Sakura key={i} position={[s.x, 0, s.z]} scale={s.s} seed={s.seed} />)}
       {pines.map((p, i) => <Pine key={i} position={[p.x, 0, p.z]} scale={p.s} />)}
       {rocks.map((r, i) => <Rock key={i} position={[r.x, 0, r.z]} scale={r.s} rotation={[0, r.rot, 0]} />)}
-      {pathLanterns.map((l) => <StoneLantern key={l.id} position={[l.x, 0, l.z]} scale={0.85} lit={!!lit?.has(l.id)} />)}
+      <LanternField lanterns={pathLanterns} lit={lit} />
       {hangingLanterns.map((l, i) => <LanternPost key={i} position={[l.x, 0, l.z]} color={l.color} />)}
 
       {/* things to find and do */}
