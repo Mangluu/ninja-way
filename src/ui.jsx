@@ -19,14 +19,23 @@ export function Intro({ onEnter }) {
   )
 }
 
-export function Hud() {
+export function Hud({ muted, onToggleMute }) {
   return (
     <>
       <div className="chip">
         <span className="dot" /> {profile.name} · <span className="muted">@{profile.handle}</span>
       </div>
+      <button
+        className="sound-btn"
+        onClick={onToggleMute}
+        aria-pressed={muted}
+        aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+        title={muted ? 'Unmute (M)' : 'Mute (M)'}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
       <div className="controls">
-        <b>WASD</b> move &nbsp; <b>drag</b> look &nbsp; <b>scroll</b> zoom &nbsp; <b>E</b> interact
+        <b>WASD</b> move &nbsp; <b>space</b> jump &nbsp; <b>drag</b> look &nbsp; <b>scroll</b> zoom &nbsp; <b>E</b> interact
       </div>
     </>
   )

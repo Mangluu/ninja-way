@@ -1,9 +1,24 @@
 // Tiny synth SFX — no audio files, just the WebAudio API.
-let ctx
+// Everything routes through a master bus so a single toggle can mute the world.
+let ctx, master
 export function initAudio() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)()
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)()
+    master = ctx.createGain()
+    master.gain.value = 1
+    master.connect(ctx.destination)
+  }
   if (ctx.state === 'suspended') ctx.resume()
   return ctx
+}
+
+// Master bus (falls back to the raw output if a sound fires before init).
+function out() { return master || ctx.destination }
+
+// Ramped, not switched — an instant cut clicks.
+export function setMuted(muted) {
+  if (!master) return
+  master.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, 0.03)
 }
 
 function env(node, t, a, d, peak = 0.5) {
@@ -24,7 +39,7 @@ export function snapSound() {
   n.buffer = buf
   const ng = c.createGain()
   env(ng, t, 0.005, 0.25, 0.4)
-  n.connect(ng).connect(c.destination)
+  n.connect(ng).connect(out())
   n.start(t)
   // thump
   const o = c.createOscillator()
@@ -33,7 +48,7 @@ export function snapSound() {
   o.frequency.exponentialRampToValueAtTime(40, t + 0.35)
   const og = c.createGain()
   env(og, t, 0.005, 0.4, 0.6)
-  o.connect(og).connect(c.destination)
+  o.connect(og).connect(out())
   o.start(t)
   o.stop(t + 0.5)
   // rising sweep
@@ -43,7 +58,7 @@ export function snapSound() {
   s.frequency.exponentialRampToValueAtTime(900, t + 0.5)
   const sg = c.createGain()
   env(sg, t + 0.05, 0.02, 0.45, 0.15)
-  s.connect(sg).connect(c.destination)
+  s.connect(sg).connect(out())
   s.start(t + 0.05)
   s.stop(t + 0.6)
 }
@@ -58,7 +73,7 @@ export function ping() {
   o.frequency.exponentialRampToValueAtTime(990, t + 0.12)
   const g = c.createGain()
   env(g, t, 0.005, 0.18, 0.25)
-  o.connect(g).connect(c.destination)
+  o.connect(g).connect(out())
   o.start(t)
   o.stop(t + 0.25)
 }
@@ -73,7 +88,7 @@ export function footstep() {
   o.frequency.exponentialRampToValueAtTime(52, t + 0.09)
   const g = c.createGain()
   env(g, t, 0.004, 0.09, 0.07)
-  o.connect(g).connect(c.destination)
+  o.connect(g).connect(out())
   o.start(t); o.stop(t + 0.14)
 }
 
@@ -92,7 +107,7 @@ export function whoosh() {
   f.frequency.exponentialRampToValueAtTime(3200, t + 0.95)
   const g = c.createGain()
   env(g, t, 0.15, 1.05, 0.32)
-  n.connect(f).connect(g).connect(c.destination)
+  n.connect(f).connect(g).connect(out())
   n.start(t); n.stop(t + 1.3)
   const o = c.createOscillator()
   o.type = 'sine'
@@ -100,7 +115,7 @@ export function whoosh() {
   o.frequency.exponentialRampToValueAtTime(1650, t + 0.9)
   const og = c.createGain()
   env(og, t, 0.1, 0.95, 0.13)
-  o.connect(og).connect(c.destination)
+  o.connect(og).connect(out())
   o.start(t); o.stop(t + 1.0)
 }
 
@@ -119,14 +134,14 @@ export function startAmbient() {
   const lp = c.createBiquadFilter()
   lp.type = 'lowpass'; lp.frequency.value = 480
   const wg = c.createGain(); wg.gain.value = 0.055
-  src.connect(lp).connect(wg).connect(c.destination); src.start(t)
+  src.connect(lp).connect(wg).connect(out()); src.start(t)
   const lfo = c.createOscillator(); lfo.frequency.value = 0.08
   const lg = c.createGain(); lg.gain.value = 240
   lfo.connect(lg).connect(lp.frequency); lfo.start(t)
   ;[70, 105].forEach((freq, i) => {
     const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq
     const og = c.createGain(); og.gain.value = i ? 0.03 : 0.05
-    o.connect(og).connect(c.destination); o.start(t)
+    o.connect(og).connect(out()); o.start(t)
   })
 }
 
@@ -141,7 +156,7 @@ export function cheer() {
     o.frequency.setValueAtTime(f, t)
     const g = c.createGain()
     env(g, t, 0.005, 0.16, 0.16)
-    o.connect(g).connect(c.destination)
+    o.connect(g).connect(out())
     o.start(t)
     o.stop(t + 0.2)
   })

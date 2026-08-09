@@ -118,7 +118,7 @@ export default function Scene() {
     <>
       <Sky />
       <Mountains />
-      <Petals />
+      <Petals count={window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 24 : 120} />
 
       {/* lighting: warm key sun + sky fill */}
       <hemisphereLight args={[ENV.skyTop, ENV.ground, 0.55]} />

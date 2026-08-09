@@ -7,7 +7,7 @@ import Effects from './effects'
 import { Intro, Hud, Prompt, Fade } from './ui'
 import { projects, SAHLOKA, ENV } from './data/content'
 import { blockers } from './world/layout'
-import { initAudio, ping, cheer, whoosh, startAmbient } from './sound.js'
+import { initAudio, ping, cheer, whoosh, startAmbient, setMuted } from './sound.js'
 import './styles.css'
 
 // dev-only: expose the r3f state so the offscreen render loop can be driven for testing
@@ -22,9 +22,12 @@ export default function App() {
   const [near, setNear] = useState(null)
   const [leaving, setLeaving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [muted, setMutedState] = useState(false)
   const toastTimer = useRef()
 
   const flash = (t) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 1500) }
+
+  const toggleMute = () => setMutedState((m) => { const next = !m; try { setMuted(next) } catch {} ; return next })
 
   const interactables = useMemo(() => ([
     ...projects.map((p) => ({ ...p, r: 3.8, type: 'project' })),
@@ -46,6 +49,7 @@ export default function App() {
     const seq = []
     const h = (e) => {
       if (e.code === 'KeyE' || e.code === 'Enter') act()
+      if (e.code === 'KeyM') toggleMute()
       if (e.code === 'KeyF') { try { cheer() } catch {}; flash('SIUUU') }
       seq.push(e.code); if (seq.length > konami.length) seq.shift()
       if (seq.join() === konami.join()) { try { cheer() } catch {}; flash('believe it') }
@@ -71,7 +75,7 @@ export default function App() {
       </Canvas>
 
       {!entered && <Intro onEnter={enter} />}
-      {entered && <Hud />}
+      {entered && <Hud muted={muted} onToggleMute={toggleMute} />}
       {entered && <Prompt near={near} onAct={act} />}
       {toast && <div className="toast">{toast}</div>}
       <Fade on={leaving} />
