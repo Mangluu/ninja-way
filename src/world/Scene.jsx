@@ -7,6 +7,7 @@ import { groundMat, stone } from '../lib/materials'
 import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock } from './props'
 import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns } from './layout'
 import SahlokaGate from './SahlokaGate'
+import Atmosphere from './Atmosphere'
 
 function Toon(p) { return <meshToonMaterial gradientMap={gradientMap} {...p} /> }
 
@@ -154,6 +155,8 @@ export default function Scene() {
 
       {/* discoverable projects */}
       {projects.map((p) => <ProjectSpot key={p.id} x={p.x} z={p.z} color={p.color} />)}
+
+      <Atmosphere />
 
       {/* the star */}
       <SahlokaGate />
