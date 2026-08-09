@@ -31,7 +31,12 @@ export const rocks = [
 ]
 
 // Stone lanterns lining the path (pairs). Each carries an id so it can be lit.
-export const pathLanterns = [4, 14, 24, 34, 44, 54, 63].flatMap((z, i) => [
+//
+// These z values deliberately avoid the torii avenue leading to the summit,
+// which stands at z = 28, 34, 40, 46, 52 and 58. The old spacing put a lantern
+// at z=34 directly inside a torii post, so every position here keeps at least
+// three units of clearance from a gate.
+export const pathLanterns = [4, 11, 18, 24, 31, 37, 43, 49, 55, 62].flatMap((z, i) => [
   { id: `lantern-${i}a`, x: -2.4, z }, { id: `lantern-${i}b`, x: 2.4, z },
 ])
 

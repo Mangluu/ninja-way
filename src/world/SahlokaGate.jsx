@@ -113,13 +113,9 @@ export default function SahlokaGate() {
       {/* torii avenue up the path */}
       {avenue.map((a, i) => <Torii key={i} position={[0, 0, a.localZ]} scale={a.s} color={a.color} />)}
 
-      {/* flanking lanterns up the approach + on the plateau */}
-      {[-18, -30, -42].map((z, i) => (
-        <group key={i}>
-          <StoneLantern position={[-2.6, 0, z]} scale={1} />
-          <StoneLantern position={[2.6, 0, z]} scale={1} />
-        </group>
-      ))}
+      {/* The approach is already lit by the path lanterns in layout.js — this
+          component used to add its own at z = 56, 44 and 32, which landed on top
+          of them (two lanterns in the same spot at z=44). Removed. */}
       <StoneLantern position={[-5, TOP, -4]} scale={1.3} />
       <StoneLantern position={[5, TOP, -4]} scale={1.3} />
       <StoneLantern position={[-5.5, TOP, 2]} scale={1.2} />
