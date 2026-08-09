@@ -80,9 +80,15 @@ function tiled(key, set, rx, ry) {
 export const woodBoards = (rx = 1, ry = 1) => tiled('woodBoards', makeSet('woodBoards', () => texWood(3, { boards: 7 })), rx, ry)
 export const woodPost = (rx = 1, ry = 1) => tiled('woodPost', makeSet('woodPost', () => texWood(29, { boards: 0 })), rx, ry)
 export const stone = (rx = 1, ry = 1) => tiled('stone', makeSet('stone', () => texStone(11, {})), rx, ry)
-export const roofTile = (rx = 1, ry = 1) => tiled('roofTile', makeSet('roofTile', () => texRoof()), rx, ry)
-export const plaster = (rx = 1, ry = 1) => tiled('plaster', makeSet('plaster', () => texWall()), rx, ry)
+export const roofTile = (rx = 1, ry = 1) => tiled('roofTile', makeSet('roofTile', () => texRoof(), { flatten: 0.3 }), rx, ry)
+export const plaster = (rx = 1, ry = 1) => tiled('plaster', makeSet('plaster', () => texWall(), { flatten: 0.55, desat: 0.75 }), rx, ry)
 export const groundMat = (rx = 1, ry = 1) => tiled('ground', makeSet('ground', () => ({ map: fbmCanvas(512, 512, 7, 5, 4, 0.6) }), { desat: 1, flatten: 0.72 }), rx, ry)
 export const floorSlab = (rx = 1, ry = 1) => tiled('floorSlab', makeSet('floorSlab', () => texFloor()), rx, ry)
 export const lacquer = (rx = 1, ry = 1) => tiled('lacquer', makeSet('lacquer', () => texLacquer()), rx, ry)
 export const shoji = (rx = 1, ry = 1) => tiled('shoji', makeSet('shoji', () => ({ map: texShoji() })), rx, ry)
+
+// Colour map without the normal map. Custom geometry (the temple roof) ships no
+// tangents, so three.js derives them per-pixel; on a curved shell with swept UVs
+// that derivation misbehaves and the surface shades almost black. Flat boxes are
+// fine — this is only for the hand-built shells.
+export const mapOnly = (set) => ({ map: set.map })

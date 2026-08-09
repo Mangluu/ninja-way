@@ -27,7 +27,7 @@ export const C = {
   sakura: '#e8a9b8', sakuraDeep: '#d98ca0',
   leaf: '#6f8f5f', leafDark: '#4e6b4a',
   stone: '#9a958a', stoneDark: '#6f6b62',
-  roof: '#38466a',
+  roof: '#8496c9',
   grass: '#6d7a4f', dirt: '#b89a6c',
 }
 

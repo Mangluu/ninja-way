@@ -3,7 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { Outlines } from '@react-three/drei'
 import { C } from '../data/content'
 import { gradientMap } from '../lib/toon'
-import { woodBoards, woodPost, stone, roofTile, plaster, lacquer } from '../lib/materials'
+import { woodBoards, woodPost, stone, roofTile, plaster, lacquer, mapOnly } from '../lib/materials'
+import { roofGeo } from '../lib/geometry'
+
+// One roof shell shared by every house — built on first use, never per-instance.
+let _houseRoof
+const houseRoof = () => (_houseRoof || (_houseRoof = roofGeo(2.5, 2.3, 0.65, 1.30, 0.15, 0.30)))
 
 // Shared toon material as a helper element.
 function Toon({ color, emissive, emissiveIntensity = 0, flatShading = false, ...p }) {
@@ -70,7 +75,7 @@ export function House({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, t
       {/* walls */}
       <mesh position={[0, 1.25, 0]} castShadow receiveShadow>
         <boxGeometry args={[3.2, 1.7, 2.8]} />
-        <Toon color={tone} {...plaster(2, 1)} />
+        <Toon color={tone} {...plaster(1, 1)} />
       </mesh>
       {/* corner timbers */}
       {[[-1.55, 1.35], [1.55, 1.35], [-1.55, -1.35], [1.55, -1.35]].map(([x, z], i) => (
@@ -79,17 +84,11 @@ export function House({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, t
           <Toon color={C.woodDark} {...woodPost(1, 2)} />
         </mesh>
       ))}
-      {/* eave slab */}
-      <mesh position={[0, 2.15, 0]} castShadow>
-        <boxGeometry args={[4.4, 0.2, 4.0]} />
-        <Toon color={C.roof} {...roofTile(3, 1)} />
-        {ink(0.035)}
-      </mesh>
-      {/* hip roof (4-sided pyramid) */}
-      <mesh position={[0, 2.85, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
-        <coneGeometry args={[2.9, 1.4, 4]} />
-        <Toon color={C.roof} {...roofTile(3, 2)} />
-        {ink(0.04)}
+      {/* temple roof — eaves sag along each run and lift at the corners */}
+      {/* No inverted-hull outline here: on this swept shell the hull inflates along
+          the mixed top/underside normals and swallows the roof entirely. */}
+      <mesh geometry={houseRoof()} position={[0, 2.12, 0]} castShadow receiveShadow>
+        <Toon color={C.roof} {...mapOnly(roofTile(2, 2))} />
       </mesh>
       {/* ridge finial */}
       <mesh position={[0, 3.55, 0]}>

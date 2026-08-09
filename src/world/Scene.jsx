@@ -134,7 +134,7 @@ export default function Scene() {
       {/* ground + path */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 34]} receiveShadow>
         <planeGeometry args={[130, 150]} />
-        <Toon color={ENV.ground} {...groundMat(7, 8)} />
+        <Toon color={ENV.ground} {...groundMat(1, 1)} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 30]} receiveShadow>
         <planeGeometry args={[4.4, 78]} />
