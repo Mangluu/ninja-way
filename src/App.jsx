@@ -6,8 +6,8 @@ import Controller from './world/Controller'
 import Effects from './effects'
 import { Intro, Hud, Prompt, Fade } from './ui'
 import { projects, SAHLOKA, ENV } from './data/content'
-import { blockers } from './world/layout'
-import { initAudio, ping, cheer, whoosh, startAmbient, setMuted } from './sound.js'
+import { blockers, pathLanterns, scrolls, bell } from './world/layout'
+import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect } from './sound.js'
 import './styles.css'
 
 // dev-only: expose the r3f state so the offscreen render loop can be driven for testing
@@ -23,26 +23,65 @@ export default function App() {
   const [leaving, setLeaving] = useState(false)
   const [toast, setToast] = useState(null)
   const [muted, setMutedState] = useState(false)
+  const [lit, setLit] = useState(() => new Set())
+  const [found, setFound] = useState(() => new Set())
+  const [photo, setPhoto] = useState(false)
+  const [raining, setRaining] = useState(false)
+  const [rungAt, setRungAt] = useState(0)
   const toastTimer = useRef()
 
-  const flash = (t) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 1500) }
+  const flash = (t) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 2600) }
 
   const toggleMute = () => setMutedState((m) => { const next = !m; try { setMuted(next) } catch {} ; return next })
 
+  // Lanterns and scrolls drop out of the list once dealt with, so the prompt
+  // never offers something that has already been done.
   const interactables = useMemo(() => ([
     ...projects.map((p) => ({ ...p, r: 3.8, type: 'project' })),
+    ...pathLanterns.filter((l) => !lit.has(l.id)).map((l) => ({
+      id: l.id, type: 'lantern', name: 'Stone lantern', tag: 'UNLIT',
+      blurb: 'Cold and dark. Light it, and the village warms a little.',
+      cta: 'Light it', x: l.x, z: l.z, r: 2.8,
+    })),
+    ...scrolls.filter((s) => !found.has(s.id)).map((s) => ({
+      id: s.id, type: 'scroll', name: 'A hidden scroll', tag: 'FOUND SOMETHING',
+      blurb: 'Someone left this here.', note: s.note,
+      cta: 'Read it', x: s.x, z: s.z, r: 2.8,
+    })),
+    { id: 'bell', type: 'bell', name: 'Shrine bell', tag: 'SUZU',
+      blurb: 'Heavy, cold bronze. It wants to be struck.', cta: 'Ring it', x: bell.x, z: bell.z, r: 3.4 },
     { id: 'sahloka', type: 'sahloka', name: SAHLOKA.name, blurb: SAHLOKA.blurb, link: SAHLOKA.link, x: SAHLOKA.x, z: SAHLOKA.z, r: 16 },
-  ]), [])
+  ]), [lit, found])
 
   const act = () => {
     if (!near) return
-    if (near.type === 'sahloka') { try { whoosh() } catch {}; setLeaving(true); window.open(near.link, '_blank', 'noopener'); setTimeout(() => setLeaving(false), 1200) }
-    else { try { ping() } catch {}; window.open(near.link, '_blank', 'noopener') }
+    switch (near.type) {
+      case 'lantern':
+        setLit((s) => { const n = new Set(s); n.add(near.id); return n })
+        try { lightUp() } catch {}
+        break
+      case 'scroll':
+        setFound((s) => { const n = new Set(s); n.add(near.id); return n })
+        try { collect() } catch {}
+        flash(near.note)
+        break
+      case 'bell':
+        try { bellRing() } catch {}
+        setRungAt(performance.now())
+        break
+      case 'sahloka':
+        try { whoosh() } catch {}
+        setLeaving(true)
+        setTimeout(() => { window.location.href = near.link }, 1100)
+        break
+      default:
+        try { ping() } catch {}
+        window.open(near.link, '_blank', 'noopener')
+    }
   }
 
   const enter = () => { try { initAudio(); startAmbient() } catch {}; setEntered(true) }
 
-  // interact + hidden winks (subtle, only if you look): F = SIUUU, Konami = believe it
   useEffect(() => {
     if (!entered) return
     const konami = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA']
@@ -50,6 +89,9 @@ export default function App() {
     const h = (e) => {
       if (e.code === 'KeyE' || e.code === 'Enter') act()
       if (e.code === 'KeyM') toggleMute()
+      if (e.code === 'KeyP') setPhoto((p) => !p)
+      if (e.code === 'KeyR') setRaining((r) => !r)
+      if (e.code === 'Escape') setPhoto(false)
       if (e.code === 'KeyF') { try { cheer() } catch {}; flash('SIUUU') }
       seq.push(e.code); if (seq.length > konami.length) seq.shift()
       if (seq.join() === konami.join()) { try { cheer() } catch {}; flash('believe it') }
@@ -57,6 +99,8 @@ export default function App() {
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   }, [entered, near])
+
+  const totals = { lanterns: pathLanterns.length, scrolls: scrolls.length }
 
   return (
     <>
@@ -68,16 +112,24 @@ export default function App() {
         <fog attach="fog" args={[ENV.fog, 22, 135]} />
         <DevHook />
         <Suspense fallback={null}>
-          <Scene />
+          <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} />
           <Controller spawn={[0, 0, -2]} blockers={blockers} interactables={interactables} onProximity={setNear} />
           <Effects />
         </Suspense>
       </Canvas>
 
       {!entered && <Intro onEnter={enter} />}
-      {entered && <Hud muted={muted} onToggleMute={toggleMute} />}
-      {entered && <Prompt near={near} onAct={act} />}
-      {toast && <div className="toast">{toast}</div>}
+      {entered && !photo && (
+        <Hud
+          muted={muted} onToggleMute={toggleMute}
+          lit={lit.size} lanterns={totals.lanterns}
+          found={found.size} scrolls={totals.scrolls}
+          raining={raining}
+        />
+      )}
+      {entered && !photo && <Prompt near={near} onAct={act} />}
+      {entered && photo && <div className="photo-hint">photo mode · <b>P</b> or <b>Esc</b> to exit</div>}
+      {toast && !photo && <div className="toast">{toast}</div>}
       <Fade on={leaving} />
     </>
   )

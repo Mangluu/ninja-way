@@ -19,12 +19,19 @@ export function Intro({ onEnter }) {
   )
 }
 
-export function Hud({ muted, onToggleMute }) {
+export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scrolls = 0, raining = false }) {
   return (
     <>
       <div className="chip">
         <span className="dot" /> {profile.name} · <span className="muted">@{profile.handle}</span>
       </div>
+
+      <div className="tally">
+        <span className={lit === lanterns ? 'done' : ''}>🏮 {lit}/{lanterns}</span>
+        <span className={found === scrolls ? 'done' : ''}>📜 {found}/{scrolls}</span>
+        {raining && <span className="rain-on">🌧 raining</span>}
+      </div>
+
       <button
         className="sound-btn"
         onClick={onToggleMute}
@@ -34,8 +41,9 @@ export function Hud({ muted, onToggleMute }) {
       >
         {muted ? '🔇' : '🔊'}
       </button>
+
       <div className="controls">
-        <b>WASD</b> move &nbsp; <b>space</b> jump &nbsp; <b>drag</b> look &nbsp; <b>scroll</b> zoom &nbsp; <b>E</b> interact
+        <b>WASD</b> move &nbsp; <b>space</b> jump &nbsp; <b>drag</b> look &nbsp; <b>E</b> interact &nbsp; <b>R</b> rain &nbsp; <b>P</b> photo
       </div>
     </>
   )
@@ -49,6 +57,7 @@ export function Prompt({ near, onAct }) {
       <div className="prompt-tag">{isSahloka ? 'THE SUMMIT' : near.tag}</div>
       <div className="prompt-name">{near.name}</div>
       <p className="prompt-blurb">{near.blurb}</p>
+      {near.note && <p className="prompt-note">“{near.note}”</p>}
       <button className={`prompt-btn ${isSahloka ? 'gold' : ''}`} onClick={onAct}>
         {isSahloka ? 'Enter Sahloka ⛩' : (near.cta || 'Open')} <span className="key">E</span>
       </button>

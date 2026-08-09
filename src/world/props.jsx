@@ -99,15 +99,19 @@ export function House({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, t
   )
 }
 
-// ── Stone lantern (glowing) ──────────────────────────────────────────────────
-export function StoneLantern({ position = [0, 0, 0], scale = 1 }) {
+// ── Stone lantern — dark until someone lights it ─────────────────────────────
+export function StoneLantern({ position = [0, 0, 0], scale = 1, lit = true }) {
   return (
     <group position={position} scale={scale}>
       <mesh position={[0, 0.12, 0]} castShadow><cylinderGeometry args={[0.34, 0.4, 0.24, 8]} /><Toon color={C.stone} {...stone(1, 1)} /></mesh>
       <mesh position={[0, 0.55, 0]} castShadow><cylinderGeometry args={[0.12, 0.14, 0.7, 8]} /><Toon color={C.stone} {...stone(1, 1)} /></mesh>
       <mesh position={[0, 0.98, 0]} castShadow><cylinderGeometry args={[0.3, 0.26, 0.14, 8]} /><Toon color={C.stoneDark} /></mesh>
-      {/* light box */}
-      <mesh position={[0, 1.22, 0]}><boxGeometry args={[0.42, 0.42, 0.42]} /><Toon color={C.washi} emissive={C.goldLite} emissiveIntensity={2.4} /></mesh>
+      {/* light box — cold and grey while unlit, then it catches */}
+      <mesh position={[0, 1.22, 0]}>
+        <boxGeometry args={[0.42, 0.42, 0.42]} />
+        <Toon color={lit ? C.washi : '#6c6a63'} emissive={lit ? C.goldLite : '#000000'} emissiveIntensity={lit ? 2.4 : 0} />
+      </mesh>
+      {lit && <pointLight position={[0, 1.22, 0]} color={C.goldLite} intensity={1.6} distance={7} decay={2} />}
       <mesh position={[0, 1.5, 0]} rotation={[0, Math.PI / 4, 0]} castShadow><coneGeometry args={[0.44, 0.34, 4]} /><Toon color={C.stoneDark} {...stone(1, 1)} />{ink(0.02)}</mesh>
       <mesh position={[0, 1.72, 0]}><sphereGeometry args={[0.08, 8, 8]} /><Toon color={C.stone} /></mesh>
     </group>
@@ -186,5 +190,67 @@ export function Rock({ position = [0, 0, 0], scale = 1, rotation = [0, 0, 0] }) 
       <dodecahedronGeometry args={[0.6, 0]} />
       <Toon color={C.stone} flatShading {...stone(1, 1)} />
     </mesh>
+  )
+}
+
+
+// ── A scroll to find, resting on a small stone ───────────────────────────────
+export function Scroll({ position = [0, 0, 0], found = false }) {
+  const g = useRef()
+  useFrame((s) => {
+    if (!g.current) return
+    const t = s.clock.elapsedTime
+    g.current.rotation.y = t * 0.5
+    g.current.position.y = 0.75 + Math.sin(t * 1.4 + position[0]) * 0.07
+  })
+  if (found) return null
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.18, 0]} castShadow><cylinderGeometry args={[0.34, 0.42, 0.36, 6]} /><Toon color={C.stone} {...stone(1, 1)} /></mesh>
+      <group ref={g} position={[0, 0.75, 0]}>
+        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.11, 0.11, 0.46, 10]} />
+          <Toon color={C.washi} emissive={C.goldLite} emissiveIntensity={0.5} />
+        </mesh>
+        {[-0.25, 0.25].map((x) => (
+          <mesh key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.055, 0.055, 0.08, 8]} />
+            <Toon color={C.vermilion} emissive={C.vermilion} emissiveIntensity={0.4} />
+          </mesh>
+        ))}
+      </group>
+      <pointLight position={[0, 0.8, 0]} color={C.goldLite} intensity={1.1} distance={4} decay={2} />
+    </group>
+  )
+}
+
+// ── The shrine bell (suzu) — ring it ─────────────────────────────────────────
+export function Bell({ position = [0, 0, 0], rungAt = 0 }) {
+  const b = useRef()
+  // Swings itself from the moment it was struck, so ringing costs no re-renders.
+  useFrame(() => {
+    if (!b.current) return
+    if (!rungAt) { b.current.rotation.x = 0; return }
+    const dt = (performance.now() - rungAt) / 1000
+    b.current.rotation.x = Math.sin(dt * 8.5) * Math.exp(-dt * 1.5) * 0.34
+  })
+  return (
+    <group position={position}>
+      {[-1.1, 1.1].map((x) => (
+        <mesh key={x} position={[x, 1.35, 0]} castShadow>
+          <cylinderGeometry args={[0.11, 0.13, 2.7, 8]} />
+          <Toon color={C.woodDark} {...woodPost(1, 2)} />
+        </mesh>
+      ))}
+      <mesh position={[0, 2.78, 0]} castShadow><boxGeometry args={[2.7, 0.2, 0.22]} /><Toon color={C.woodDark} {...woodPost(2, 1)} />{ink(0.025)}</mesh>
+      <group ref={b} position={[0, 2.68, 0]}>
+        <mesh position={[0, -0.55, 0]} castShadow>
+          <cylinderGeometry args={[0.36, 0.46, 0.95, 14]} />
+          <Toon color={C.gold} emissive={C.gold} emissiveIntensity={0.35} />
+          {ink(0.03)}
+        </mesh>
+        <mesh position={[0, -1.06, 0]}><sphereGeometry args={[0.13, 10, 10]} /><Toon color={C.goldLite} emissive={C.gold} emissiveIntensity={0.6} /></mesh>
+      </group>
+    </group>
   )
 }

@@ -161,3 +161,46 @@ export function cheer() {
     o.stop(t + 0.2)
   })
 }
+
+// a lantern catching: a soft whoosh with a warm bloom on top
+export function lightUp() {
+  const c = initAudio(), t = c.currentTime
+  const n = c.createBufferSource()
+  const buf = c.createBuffer(1, c.sampleRate * 0.5, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.6)
+  n.buffer = buf
+  const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 0.8
+  const g = c.createGain(); env(g, t, 0.01, 0.4, 0.14)
+  n.connect(f).connect(g).connect(out()); n.start(t)
+  ;[523, 784].forEach((freq, i) => {
+    const o = c.createOscillator(); o.type = 'sine'
+    o.frequency.setValueAtTime(freq, t + i * 0.05)
+    const og = c.createGain(); env(og, t + i * 0.05, 0.01, 0.35, 0.1)
+    o.connect(og).connect(out()); o.start(t + i * 0.05); o.stop(t + 0.5)
+  })
+}
+
+// the shrine bell: a struck partial stack with a long decay
+export function bellRing() {
+  const c = initAudio(), t = c.currentTime
+  ;[[440, 0.22], [660, 0.13], [1320, 0.07], [1980, 0.04]].forEach(([f, amp]) => {
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t)
+    const g = c.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(amp, t + 0.008)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.2)
+    o.connect(g).connect(out()); o.start(t); o.stop(t + 3.3)
+  })
+}
+
+// picking up a scroll
+export function collect() {
+  const c = initAudio(), t0 = c.currentTime
+  ;[659, 880, 1319].forEach((f, i) => {
+    const t = t0 + i * 0.06
+    const o = c.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f, t)
+    const g = c.createGain(); env(g, t, 0.005, 0.2, 0.16)
+    o.connect(g).connect(out()); o.start(t); o.stop(t + 0.28)
+  })
+}

@@ -30,10 +30,22 @@ export const rocks = [
   { x: 3.5, z: 60, s: 0.9, rot: 0.7 },
 ]
 
-// Stone lanterns lining the path (pairs).
-export const pathLanterns = [4, 14, 24, 34, 44, 54, 63].flatMap((z) => [
-  { x: -2.4, z }, { x: 2.4, z },
+// Stone lanterns lining the path (pairs). Each carries an id so it can be lit.
+export const pathLanterns = [4, 14, 24, 34, 44, 54, 63].flatMap((z, i) => [
+  { id: `lantern-${i}a`, x: -2.4, z }, { id: `lantern-${i}b`, x: 2.4, z },
 ])
+
+// Hidden scrolls — tucked off the path, behind things, for people who wander.
+export const scrolls = [
+  { id: 'scroll-0', x: -14, z: 6,  note: 'The best part is always the people. The tech is just the excuse.' },
+  { id: 'scroll-1', x: 15, z: 27,  note: 'Provenance over plausibility. Refuse, don’t invent.' },
+  { id: 'scroll-2', x: -16, z: 41, note: 'Ship the thing. A demo beats a description.' },
+  { id: 'scroll-3', x: 16, z: 55,  note: 'Build worlds that remember the people in them.' },
+  { id: 'scroll-4', x: -6, z: 69,  note: 'Every gate you walk through was once a wall.' },
+]
+
+// The shrine bell, just off the path near the middle of the village.
+export const bell = { id: 'bell', x: -5.5, z: 30 }
 
 export const hangingLanterns = [
   { x: 8, z: 8, color: C.vermilion }, { x: -8, z: 20, color: C.vermilion },

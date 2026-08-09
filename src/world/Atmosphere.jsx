@@ -103,13 +103,62 @@ function GroundMist({ count = 7 }) {
   )
 }
 
-export default function Atmosphere() {
+
+// ── Rain: falling streaks, toggled on demand ─────────────────────────────────
+function Rain({ count = 850 }) {
+  const uT = useRef({ value: 0 })
+  const geo = useMemo(() => {
+    // two verts per drop so each renders as a short vertical streak
+    const pos = new Float32Array(count * 2 * 3)
+    const end = new Float32Array(count * 2)
+    const speed = new Float32Array(count * 2)
+    const len = new Float32Array(count * 2)
+    for (let i = 0; i < count; i++) {
+      const x = (Math.random() - 0.5) * 60, z = Math.random() * 90 - 10, y = Math.random() * 20
+      const sp = 9 + Math.random() * 10, ln = 0.35 + Math.random() * 0.6
+      for (let k = 0; k < 2; k++) {
+        const o = (i * 2 + k) * 3
+        pos[o] = x; pos[o + 1] = y; pos[o + 2] = z
+        end[i * 2 + k] = k; speed[i * 2 + k] = sp; len[i * 2 + k] = ln
+      }
+    }
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    g.setAttribute('aEnd', new THREE.BufferAttribute(end, 1))
+    g.setAttribute('aSpeed', new THREE.BufferAttribute(speed, 1))
+    g.setAttribute('aLen', new THREE.BufferAttribute(len, 1))
+    return g
+  }, [count])
+
+  const mat = useMemo(() => new THREE.ShaderMaterial({
+    uniforms: { uT: uT.current },
+    transparent: true, depthWrite: false,
+    vertexShader: `
+      attribute float aEnd; attribute float aSpeed; attribute float aLen;
+      uniform float uT; varying float vA;
+      void main(){
+        vec3 p = position;
+        p.y = mod(p.y - uT * aSpeed, 20.0);
+        p.y -= aEnd * aLen;             // trailing vertex sits below the head
+        vA = smoothstep(0.0, 3.0, p.y); // fade out as it reaches the ground
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: 'varying float vA;\nvoid main(){ gl_FragColor = vec4(0.72, 0.82, 0.90, vA * 0.30); }',
+  }), [])
+
+  useFrame((s) => { uT.current.value = s.clock.elapsedTime })
+  const lines = useMemo(() => { const l = new THREE.LineSegments(geo, mat); l.frustumCulled = false; return l }, [geo, mat])
+  return <primitive object={lines} />
+}
+
+export default function Atmosphere({ raining = false }) {
   // Drifting particles are exactly what reduced-motion users ask not to see.
   if (REDUCED()) return null
   return (
     <>
       <Fireflies />
       <GroundMist />
+      {raining && <Rain />}
     </>
   )
 }
