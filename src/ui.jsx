@@ -43,7 +43,7 @@ export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scr
       </button>
 
       <div className="controls">
-        <b>WASD</b> move &nbsp; <b>space</b> jump &nbsp; <b>drag</b> look &nbsp; <b>E</b> interact &nbsp; <b>R</b> rain &nbsp; <b>P</b> photo
+        <b>WASD</b> move &nbsp; <b>shift</b> sprint &nbsp; <b>space</b> ×2 flip &nbsp; <b>E</b> interact &nbsp; <b>R</b> rain &nbsp; <b>P</b> photo
       </div>
     </>
   )

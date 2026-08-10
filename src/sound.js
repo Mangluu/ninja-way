@@ -225,3 +225,22 @@ export function doubleJump() {
   const g = c.createGain(); env(g, t, 0.006, 0.18, 0.13)
   o.connect(g).connect(out()); o.start(t); o.stop(t + 0.26)
 }
+
+// wooden clatter when a crate is struck or lands
+export function crateHit(vol = 1) {
+  const c = initAudio(), t = c.currentTime
+  const n = c.createBufferSource()
+  const buf = c.createBuffer(1, c.sampleRate * 0.14, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.6)
+  n.buffer = buf
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'
+  bp.frequency.value = 380 + Math.random() * 260; bp.Q.value = 1.4
+  const g = c.createGain(); env(g, t, 0.004, 0.13, 0.16 * vol)
+  n.connect(bp).connect(g).connect(out()); n.start(t)
+  const o = c.createOscillator(); o.type = 'triangle'
+  o.frequency.setValueAtTime(150 + Math.random() * 70, t)
+  o.frequency.exponentialRampToValueAtTime(70, t + 0.1)
+  const og = c.createGain(); env(og, t, 0.004, 0.11, 0.10 * vol)
+  o.connect(og).connect(out()); o.start(t); o.stop(t + 0.18)
+}

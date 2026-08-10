@@ -12,7 +12,7 @@ const DUST_COUNT = 4
 
 const shortAngle = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d }
 
-export default function Controller({ spawn = [0, 0, -2], blockers = [], interactables = [], onProximity }) {
+export default function Controller({ spawn = [0, 0, -2], blockers = [], interactables = [], onProximity, playerRef }) {
   const rig = useRef()
   const { camera, gl } = useThree()
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
@@ -148,6 +148,11 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     moveState.current.moving = moving && grounded.current
     moveState.current.speed = vel.current.length()
     moveState.current.sprinting = moving && grounded.current && maxSpeed === SPRINT
+    // publish position + speed so world props (the crates) can react to being hit
+    if (playerRef) {
+      playerRef.current.x = np.x; playerRef.current.y = charY.current; playerRef.current.z = np.z
+      playerRef.current.speed = vel.current.length()
+    }
     moveState.current.airborne = !grounded.current
 
     // footsteps

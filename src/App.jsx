@@ -46,6 +46,7 @@ export default function App() {
   const [raining, setRaining] = useState(false)
   const [rungAt, setRungAt] = useState(0)
   const toastTimer = useRef()
+  const playerRef = useRef({ x: 0, y: 0, z: -2, speed: 0 })
 
   const flash = (t) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 2600) }
 
@@ -133,8 +134,8 @@ export default function App() {
         {/* drops resolution instead of dropping frames on weaker GPUs */}
         <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>
-          <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} />
-          <Controller spawn={[0, 0, -2]} blockers={blockers} interactables={interactables} onProximity={setNear} />
+          <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} playerRef={playerRef} />
+          <Controller spawn={[0, 0, -2]} blockers={blockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} />
           <Effects />
         </Suspense>
       </Canvas>

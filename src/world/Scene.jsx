@@ -5,11 +5,12 @@ import { C, ENV, projects } from '../data/content'
 import { gradientMap } from '../lib/toon'
 import { groundMat, stone } from '../lib/materials'
 import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock, Scroll, Bell } from './props'
-import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell } from './layout'
+import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell, crateStacks, groundHeight } from './layout'
 import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
 import LightBudget from './LightBudget'
 import LanternField from './LanternField'
+import Crates from './Crates'
 
 function Toon(p) { return <meshToonMaterial gradientMap={gradientMap} {...p} /> }
 
@@ -117,7 +118,7 @@ function ProjectSpot({ x, z, color }) {
   )
 }
 
-export default function Scene({ lit, found, rungAt = 0, raining = false }) {
+export default function Scene({ lit, found, rungAt = 0, raining = false, playerRef }) {
   return (
     <>
       <LightBudget />
@@ -149,16 +150,17 @@ export default function Scene({ lit, found, rungAt = 0, raining = false }) {
       <Torii position={[0, 0, -5]} scale={1.5} />
 
       {/* village */}
-      {houses.map((h, i) => <House key={i} position={[h.x, 0, h.z]} rotation={[0, h.rot, 0]} tone={h.tone} />)}
-      {sakura.map((s, i) => <Sakura key={i} position={[s.x, 0, s.z]} scale={s.s} seed={s.seed} />)}
-      {pines.map((p, i) => <Pine key={i} position={[p.x, 0, p.z]} scale={p.s} />)}
-      {rocks.map((r, i) => <Rock key={i} position={[r.x, 0, r.z]} scale={r.s} rotation={[0, r.rot, 0]} />)}
+      {houses.map((h, i) => <House key={i} position={[h.x, groundHeight(h.x, h.z), h.z]} rotation={[0, h.rot, 0]} tone={h.tone} />)}
+      {sakura.map((s, i) => <Sakura key={i} position={[s.x, groundHeight(s.x, s.z), s.z]} scale={s.s} seed={s.seed} />)}
+      {pines.map((p, i) => <Pine key={i} position={[p.x, groundHeight(p.x, p.z), p.z]} scale={p.s} />)}
+      {rocks.map((r, i) => <Rock key={i} position={[r.x, groundHeight(r.x, r.z), r.z]} scale={r.s} rotation={[0, r.rot, 0]} />)}
       <LanternField lanterns={pathLanterns} lit={lit} />
-      {hangingLanterns.map((l, i) => <LanternPost key={i} position={[l.x, 0, l.z]} color={l.color} />)}
+      {hangingLanterns.map((l, i) => <LanternPost key={i} position={[l.x, groundHeight(l.x, l.z), l.z]} color={l.color} />)}
 
       {/* things to find and do */}
-      {scrolls.map((sc) => <Scroll key={sc.id} position={[sc.x, 0, sc.z]} found={!!found?.has(sc.id)} />)}
-      <Bell position={[bell.x, 0, bell.z]} rungAt={rungAt} />
+      {scrolls.map((sc) => <Scroll key={sc.id} position={[sc.x, groundHeight(sc.x, sc.z), sc.z]} found={!!found?.has(sc.id)} />)}
+      <Bell position={[bell.x, groundHeight(bell.x, bell.z), bell.z]} rungAt={rungAt} />
+      <Crates stacks={crateStacks} playerRef={playerRef} />
 
       {/* discoverable projects */}
       {projects.map((p) => <ProjectSpot key={p.id} x={p.x} z={p.z} color={p.color} />)}

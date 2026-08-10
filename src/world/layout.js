@@ -14,9 +14,9 @@ export const houses = [
 
 export const sakura = [
   { x: -4, z: 5, s: 1.1, seed: 1 }, { x: 5, z: 12, s: 1.3, seed: 2 },
-  { x: -6, z: 28, s: 1.15, seed: 3 }, { x: 7, z: 38, s: 1.25, seed: 4 },
-  { x: -5, z: 52, s: 1.2, seed: 5 }, { x: 6, z: 58, s: 1.05, seed: 6 },
-  { x: -3, z: 66, s: 1.35, seed: 7 },
+  { x: -8, z: 27, s: 1.15, seed: 3 }, { x: 12, z: 37, s: 1.25, seed: 4 },
+  { x: -5, z: 52, s: 1.2, seed: 5 }, { x: 12, z: 57, s: 1.05, seed: 6 },
+  { x: -12, z: 63, s: 1.35, seed: 7 },
 ]
 
 export const pines = [
@@ -27,7 +27,7 @@ export const pines = [
 export const rocks = [
   { x: 3, z: 3, s: 0.9, rot: 0.4 }, { x: -3, z: 20, s: 0.7, rot: 1.1 },
   { x: 4, z: 33, s: 1.1, rot: 0.2 }, { x: -4, z: 47, s: 0.8, rot: 2.0 },
-  { x: 3.5, z: 60, s: 0.9, rot: 0.7 },
+  { x: 5.5, z: 51, s: 0.9, rot: 0.7 },
 ]
 
 // Stone lanterns lining the path (pairs). Each carries an id so it can be lit.
@@ -36,9 +36,13 @@ export const rocks = [
 // which stands at z = 28, 34, 40, 46, 52 and 58. The old spacing put a lantern
 // at z=34 directly inside a torii post, so every position here keeps at least
 // three units of clearance from a gate.
-export const pathLanterns = [4, 11, 18, 24, 31, 37, 43, 49, 55, 62].flatMap((z, i) => [
-  { id: `lantern-${i}a`, x: -2.4, z }, { id: `lantern-${i}b`, x: 2.4, z },
-])
+export const pathLanterns = [
+  { id: 'lantern-0', x: -2.4, z: 8 },
+  { id: 'lantern-1', x: 2.4, z: 19 },
+  { id: 'lantern-2', x: -2.4, z: 31 },
+  { id: 'lantern-3', x: 2.4, z: 43 },
+  { id: 'lantern-4', x: -2.4, z: 55 },
+]
 
 // Hidden scrolls — tucked off the path, behind things, for people who wander.
 export const scrolls = [
@@ -46,7 +50,7 @@ export const scrolls = [
   { id: 'scroll-1', x: 15, z: 27,  note: 'Provenance over plausibility. Refuse, don’t invent.' },
   { id: 'scroll-2', x: -16, z: 41, note: 'Ship the thing. A demo beats a description.' },
   { id: 'scroll-3', x: 16, z: 55,  note: 'Build worlds that remember the people in them.' },
-  { id: 'scroll-4', x: -6, z: 69,  note: 'Every gate you walk through was once a wall.' },
+  { id: 'scroll-4', x: -18, z: 50,  note: 'Every gate you walk through was once a wall.' },
 ]
 
 // The shrine bell, just off the path near the middle of the village.
@@ -54,7 +58,7 @@ export const bell = { id: 'bell', x: -5.5, z: 30 }
 
 export const hangingLanterns = [
   { x: 8, z: 8, color: C.vermilion }, { x: -8, z: 20, color: C.vermilion },
-  { x: 9, z: 42, color: C.vermilion }, { x: -9, z: 54, color: C.gold },
+  { x: 15, z: 40, color: C.vermilion }, { x: -9, z: 54, color: C.gold },
 ]
 
 // Circles the player cannot walk into. (Hill is NOT a blocker — it's climbable, see groundHeight.)
@@ -69,3 +73,10 @@ export function groundHeight(x, z) {
   const t = (HILL.rBot - d) / (HILL.rBot - HILL.rTop) // 0..1 up the slope
   return HILL.top * (t * t * (3 - 2 * t)) // smoothstep
 }
+
+// Crate stacks — knock them over by running through them. No prompt, no key.
+export const crateStacks = [
+  { x: -6, z: 14 },
+  { x: 7, z: 34 },
+  { x: -6, z: 44 },
+]

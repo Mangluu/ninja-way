@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { C } from '../data/content'
 import { gradientMap } from '../lib/toon'
 import { stone } from '../lib/materials'
+import { groundHeight } from './layout'
 
 // The 14 path lanterns are identical apart from whether they are lit. Drawn as
 // individual meshes that is ~84 draw calls; the stone body is the same shape
@@ -27,7 +28,7 @@ export default function LanternField({ lanterns, lit, scale = 0.85 }) {
     mesh.receiveShadow = true
     const m = new THREE.Object3D()
     lanterns.forEach((l, i) => {
-      m.position.set(l.x, p.y * scale, l.z)
+      m.position.set(l.x, groundHeight(l.x, l.z) + p.y * scale, l.z)
       m.rotation.set(0, p.rotY || 0, 0)
       m.scale.setScalar(scale)
       m.updateMatrix()
@@ -44,7 +45,7 @@ export default function LanternField({ lanterns, lit, scale = 0.85 }) {
       {lanterns.map((l) => {
         const on = !!lit?.has(l.id)
         return (
-          <group key={l.id} position={[l.x, 1.22 * scale, l.z]} scale={scale}>
+          <group key={l.id} position={[l.x, groundHeight(l.x, l.z) + 1.22 * scale, l.z]} scale={scale}>
             <mesh>
               <boxGeometry args={[0.42, 0.42, 0.42]} />
               <meshToonMaterial
