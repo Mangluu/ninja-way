@@ -138,10 +138,18 @@ export function LanternPost({ position = [0, 0, 0], color = C.vermilion, scale =
 }
 
 // ── Sakura tree (gently swaying) ─────────────────────────────────────────────
-export function Sakura({ position = [0, 0, 0], scale = 1, seed = 0 }) {
+export function Sakura({ position = [0, 0, 0], scale = 1, seed = 0, shookAt = 0 }) {
   const canopy = useRef()
   useFrame((s) => {
-    if (canopy.current) canopy.current.rotation.z = Math.sin(s.clock.elapsedTime * 0.8 + seed) * 0.05
+    if (!canopy.current) return
+    const t = s.clock.elapsedTime
+    let sway = Math.sin(t * 0.8 + seed) * 0.05
+    // a shake rings out and settles
+    if (shookAt) {
+      const dt = (performance.now() - shookAt) / 1000
+      if (dt < 2.5) sway += Math.sin(dt * 13) * Math.exp(-dt * 1.8) * 0.22
+    }
+    canopy.current.rotation.z = sway
   })
   const blobs = [
     [0, 2.1, 0, 1.3, C.sakura],
@@ -250,6 +258,56 @@ export function Bell({ position = [0, 0, 0], rungAt = 0 }) {
           {ink(0.03)}
         </mesh>
         <mesh position={[0, -1.06, 0]}><sphereGeometry args={[0.13, 10, 10]} /><Toon color={C.goldLite} emissive={C.gold} emissiveIntensity={0.6} /></mesh>
+      </group>
+    </group>
+  )
+}
+
+
+// ── The great drum (taiko) — struck, not rung ────────────────────────────────
+export function Taiko({ position = [0, 0, 0], hitAt = 0 }) {
+  const head = useRef()
+  const body = useRef()
+  useFrame(() => {
+    if (!hitAt) { if (head.current) head.current.scale.set(1, 1, 1); return }
+    const dt = (performance.now() - hitAt) / 1000
+    const k = dt < 1.4 ? Math.sin(dt * 26) * Math.exp(-dt * 4.5) : 0
+    if (head.current) head.current.scale.set(1 + k * 0.05, 1 - k * 0.5, 1 + k * 0.05)
+    if (body.current) body.current.position.y = 1.15 + k * 0.03
+  })
+  return (
+    <group position={position}>
+      {/* stand */}
+      {[-1.0, 1.0].map((x) => (
+        <mesh key={x} position={[x, 0.55, 0]} rotation={[0, 0, x < 0 ? 0.16 : -0.16]} castShadow>
+          <boxGeometry args={[0.2, 1.15, 0.2]} />
+          <Toon color={C.woodDark} {...woodPost(1, 1)} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.16, 0]} castShadow><boxGeometry args={[2.5, 0.22, 0.7]} /><Toon color={C.woodDark} {...woodPost(2, 1)} />{ink(0.02)}</mesh>
+
+      <group ref={body} position={[0, 1.15, 0]}>
+        {/* barrel, laid on its side so the head faces you */}
+        <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.78, 0.78, 1.0, 20]} />
+          <Toon color={C.woodDark} {...woodBoards(2, 1)} />
+          {ink(0.03)}
+        </mesh>
+        {/* the struck head */}
+        <mesh ref={head} position={[0, 0, 0.51]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.79, 0.79, 0.04, 20]} />
+          <Toon color={C.washi} emissive={C.washi} emissiveIntensity={0.12} />
+        </mesh>
+        {/* tack ring */}
+        {Array.from({ length: 14 }).map((_, i) => {
+          const a = (i / 14) * Math.PI * 2
+          return (
+            <mesh key={i} position={[Math.cos(a) * 0.68, Math.sin(a) * 0.68, 0.54]}>
+              <sphereGeometry args={[0.045, 6, 6]} />
+              <Toon color={C.gold} emissive={C.gold} emissiveIntensity={0.4} />
+            </mesh>
+          )
+        })}
       </group>
     </group>
   )

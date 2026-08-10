@@ -80,3 +80,6 @@ export const crateStacks = [
   { x: 7, z: 34 },
   { x: -6, z: 44 },
 ]
+
+// The great drum, off the path in the village square.
+export const taiko = { id: 'taiko', x: 6, z: 22 }

@@ -4,8 +4,8 @@ import * as THREE from 'three'
 import { C, ENV, projects } from '../data/content'
 import { gradientMap } from '../lib/toon'
 import { groundMat, stone } from '../lib/materials'
-import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock, Scroll, Bell } from './props'
-import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell, crateStacks, groundHeight } from './layout'
+import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock, Scroll, Bell, Taiko } from './props'
+import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell, crateStacks, taiko, groundHeight } from './layout'
 import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
 import LightBudget from './LightBudget'
@@ -36,6 +36,22 @@ function Sky() {
           }`}
       />
     </mesh>
+  )
+}
+
+// ── The moon, sitting where the key light comes from ────────────────────────
+function Moon() {
+  return (
+    <group position={[150, 190, -70]}>
+      <mesh>
+        <sphereGeometry args={[16, 24, 24]} />
+        <meshBasicMaterial color={ENV.moon} toneMapped={false} fog={false} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[30, 20, 20]} />
+        <meshBasicMaterial color={ENV.moon} transparent opacity={0.10} blending={THREE.AdditiveBlending} depthWrite={false} fog={false} />
+      </mesh>
+    </group>
   )
 }
 
@@ -118,19 +134,20 @@ function ProjectSpot({ x, z, color }) {
   )
 }
 
-export default function Scene({ lit, found, rungAt = 0, raining = false, playerRef }) {
+export default function Scene({ lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {} }) {
   return (
     <>
       <LightBudget />
       <Sky />
+      <Moon />
       <Mountains />
       <Petals count={window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 24 : 120} />
 
-      {/* lighting: warm key sun + sky fill */}
-      <hemisphereLight args={[ENV.skyTop, ENV.ground, 0.55]} />
-      <ambientLight intensity={0.14} />
+      {/* lighting: a cool moon key, kept low so lantern light reads */}
+      <hemisphereLight args={[ENV.skyTop, ENV.ground, 0.30]} />
+      <ambientLight intensity={0.09} />
       <directionalLight
-        position={[18, 30, -8]} intensity={2.4} color={ENV.sun} castShadow
+        position={[18, 30, -8]} intensity={0.85} color={ENV.sun} castShadow
         shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004}
         shadow-camera-near={1} shadow-camera-far={110}
         shadow-camera-left={-45} shadow-camera-right={45} shadow-camera-top={45} shadow-camera-bottom={-45}
@@ -151,7 +168,7 @@ export default function Scene({ lit, found, rungAt = 0, raining = false, playerR
 
       {/* village */}
       {houses.map((h, i) => <House key={i} position={[h.x, groundHeight(h.x, h.z), h.z]} rotation={[0, h.rot, 0]} tone={h.tone} />)}
-      {sakura.map((s, i) => <Sakura key={i} position={[s.x, groundHeight(s.x, s.z), s.z]} scale={s.s} seed={s.seed} />)}
+      {sakura.map((s, i) => <Sakura key={i} position={[s.x, groundHeight(s.x, s.z), s.z]} scale={s.s} seed={s.seed} shookAt={shaken[`tree-${i}`] || 0} />)}
       {pines.map((p, i) => <Pine key={i} position={[p.x, groundHeight(p.x, p.z), p.z]} scale={p.s} />)}
       {rocks.map((r, i) => <Rock key={i} position={[r.x, groundHeight(r.x, r.z), r.z]} scale={r.s} rotation={[0, r.rot, 0]} />)}
       <LanternField lanterns={pathLanterns} lit={lit} />
@@ -161,6 +178,7 @@ export default function Scene({ lit, found, rungAt = 0, raining = false, playerR
       {scrolls.map((sc) => <Scroll key={sc.id} position={[sc.x, groundHeight(sc.x, sc.z), sc.z]} found={!!found?.has(sc.id)} />)}
       <Bell position={[bell.x, groundHeight(bell.x, bell.z), bell.z]} rungAt={rungAt} />
       <Crates stacks={crateStacks} playerRef={playerRef} />
+      <Taiko position={[taiko.x, groundHeight(taiko.x, taiko.z), taiko.z]} hitAt={taikoAt} />
 
       {/* discoverable projects */}
       {projects.map((p) => <ProjectSpot key={p.id} x={p.x} z={p.z} color={p.color} />)}

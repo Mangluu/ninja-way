@@ -6,14 +6,24 @@ import { WORLD, C } from '../data/content'
 import { groundHeight } from './layout'
 import { footstep, doubleJump } from '../sound.js'
 
-const SPEED = 6, SPRINT = 10, CHAR_R = 0.45, JUMP = 7.2, GRAVITY = 20
+const SPEED = 6, SPRINT = 10, CHAR_R = 0.45
+const JUMP = 8.0
+const GRAV_UP = 18          // lighter going up…
+const GRAV_DOWN = 30        // …heavier coming down: the classic platformer arc
+const CUT = 0.45            // releasing jump early keeps this much upward speed
+const COYOTE = 0.12         // still jumpable this long after leaving the ground
+const BUFFER = 0.15         // a jump pressed this early still fires on landing
+const AIR_CONTROL = 0.35    // you can steer in the air, but not pivot on a dime
 const PITCH_MIN = 0.06, PITCH_MAX = 1.05
 const DUST_COUNT = 4
+const TAU = Math.PI * 2
 
-const shortAngle = (a, b) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d }
+const shortAngle = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d }
 
 export default function Controller({ spawn = [0, 0, -2], blockers = [], interactables = [], onProximity, playerRef }) {
-  const rig = useRef()
+  const rig = useRef()        // world position + facing
+  const flipRig = useRef()    // somersault, *inside* facing so the axis is always "forward"
+  const squash = useRef()     // landing squash / take-off stretch
   const { camera, gl } = useThree()
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
 
@@ -27,22 +37,22 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
   const vy = useRef(0)
   const grounded = useRef(true)
   const wasGrounded = useRef(true)
+  const coyote = useRef(0)
+  const buffered = useRef(0)
+  const jumps = useRef(0)
+  const spacePrev = useRef(false)
+  const flip = useRef(1)
+  const squashT = useRef(1)
   const step = useRef(0)
   const shake = useRef(0)
-  const jumps = useRef(0)        // 0 on the ground, 1 after a jump, 2 after the flip
-  const spacePrev = useRef(false)
-  const flip = useRef(1)         // 1 = finished; counts 0→1 through one somersault
   const keys = useRef({})
   const drag = useRef(null)
   const moveState = useRef({ moving: false, speed: 0 })
   const nearestId = useRef(undefined)
 
-  // Camera aims at a smoothed target, never at raw player state — that's what
-  // keeps the view calm while the character bobs, lands and turns.
   const lookAt = useRef(new THREE.Vector3(spawn[0], 1.3, spawn[2]))
   const camPos = useRef(new THREE.Vector3())
 
-  // Landing dust: a tiny fixed pool of expanding rings, reused round-robin.
   const dust = useRef([])
   const dustState = useRef(Array.from({ length: DUST_COUNT }, () => ({ t: 1, x: 0, y: 0, z: 0 })))
   const dustNext = useRef(0)
@@ -78,7 +88,8 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     const k = keys.current
     const dz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
     const dx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-    const maxSpeed = (k.ShiftLeft || k.ShiftRight) ? SPRINT : SPEED
+    const sprinting = k.ShiftLeft || k.ShiftRight
+    const maxSpeed = sprinting ? SPRINT : SPEED
 
     const fwd = new THREE.Vector3(Math.sin(yaw.current), 0, Math.cos(yaw.current))
     const right = new THREE.Vector3(-Math.cos(yaw.current), 0, Math.sin(yaw.current))
@@ -86,7 +97,9 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     const moving = move.lengthSq() > 0.001
     if (moving) move.normalize()
 
-    vel.current.lerp(move.multiplyScalar(maxSpeed), 1 - Math.exp(-12 * dt))
+    // Air control is deliberately weaker: you can adjust a jump, not rewrite it.
+    const accel = grounded.current ? 12 : 12 * AIR_CONTROL
+    vel.current.lerp(move.multiplyScalar(maxSpeed), 1 - Math.exp(-accel * dt))
 
     const np = pos.current.clone().addScaledVector(vel.current, dt)
     np.x = THREE.MathUtils.clamp(np.x, WORLD.minX, WORLD.maxX)
@@ -98,70 +111,93 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     }
     pos.current.copy(np)
 
-    // vertical: gravity + jump, riding the hill height field
+    // ── vertical ──────────────────────────────────────────────────────────────
     const groundY = groundHeight(np.x, np.z)
-    // Edge-triggered so holding space cannot pogo, and so the second press is
-    // recognisably a *second* press — that is the whole feel of a double jump.
     const spaceNow = !!k.Space
-    if (spaceNow && !spacePrev.current) {
-      if (grounded.current) {
-        vy.current = JUMP
-        jumps.current = 1
-      } else if (jumps.current < 2) {
-        vy.current = JUMP * 0.9      // slightly softer, so it reads as a kick off nothing
-        jumps.current = 2
-        flip.current = 0             // somersault
-        try { doubleJump() } catch {}
+    const pressed = spaceNow && !spacePrev.current
+
+    // Coyote time and jump buffering: the two things that make a jump feel fair
+    // rather than mistimed. You can jump just after stepping off, and a press
+    // slightly too early still fires the moment you land.
+    coyote.current = grounded.current ? COYOTE : Math.max(0, coyote.current - dt)
+    buffered.current = pressed ? BUFFER : Math.max(0, buffered.current - dt)
+
+    if (buffered.current > 0 && (grounded.current || coyote.current > 0) && jumps.current === 0) {
+      vy.current = JUMP
+      jumps.current = 1
+      buffered.current = 0
+      coyote.current = 0
+      squashT.current = 0
+    } else if (pressed && !grounded.current && jumps.current === 1) {
+      vy.current = JUMP * 0.92
+      jumps.current = 2
+      flip.current = 0
+      try { doubleJump() } catch {}
+      if (!reduced) {
         const slot = dustState.current[dustNext.current % DUST_COUNT]
         slot.t = 0; slot.x = np.x; slot.y = charY.current; slot.z = np.z
         dustNext.current++
       }
     }
     spacePrev.current = spaceNow
+
+    // Release early and the rise is cut short — hold the key for height.
+    if (!spaceNow && vy.current > 0) vy.current *= Math.pow(CUT, dt * 60)
+
     const fallSpeed = vy.current
-    vy.current -= GRAVITY * dt
+    vy.current -= (vy.current > 0 ? GRAV_UP : GRAV_DOWN) * dt
     charY.current += vy.current * dt
     if (charY.current <= groundY) { charY.current = groundY; vy.current = 0 }
     grounded.current = charY.current <= groundY + 0.01
     if (grounded.current) jumps.current = 0
 
-    // Landing: the moment airborne becomes grounded, sell the impact.
-    if (grounded.current && !wasGrounded.current && fallSpeed < -4) {
+    if (grounded.current && !wasGrounded.current && fallSpeed < -3) {
       const power = Math.min(Math.abs(fallSpeed) / JUMP, 1)
+      squashT.current = 0
       if (!reduced) {
-        shake.current = Math.min(shake.current + power * 0.22, 0.3)
+        shake.current = Math.min(shake.current + power * 0.2, 0.28)
         const slot = dustState.current[dustNext.current % DUST_COUNT]
         slot.t = 0; slot.x = np.x; slot.y = groundY; slot.z = np.z
         dustNext.current++
       }
       try { footstep() } catch {}
+      flip.current = 1          // never land mid-somersault
     }
     wasGrounded.current = grounded.current
 
+    // ── pose ──────────────────────────────────────────────────────────────────
     if (moving) facing.current += shortAngle(facing.current, Math.atan2(move.x, move.z)) * (1 - Math.exp(-10 * dt))
-    if (flip.current < 1) flip.current = Math.min(1, flip.current + dt * 2.1)
+    if (flip.current < 1) flip.current = Math.min(1, flip.current + dt * 2.4)
+    if (squashT.current < 1) squashT.current = Math.min(1, squashT.current + dt * 5)
+
     if (rig.current) {
       rig.current.position.set(np.x, charY.current, np.z)
       rig.current.rotation.y = facing.current
-      rig.current.rotation.x = flip.current < 1 ? flip.current * Math.PI * 2 : 0
     }
+    // The somersault lives inside the facing group, so it is always a forward
+    // roll regardless of which way the character happens to be pointing. That
+    // was the old bug: rotating the same group that carried facing meant the
+    // flip axis changed with your last direction of travel.
+    if (flipRig.current) flipRig.current.rotation.x = flip.current < 1 ? flip.current * TAU : 0
+    if (squash.current && !reduced) {
+      const s = 1 - Math.sin(squashT.current * Math.PI) * 0.16
+      squash.current.scale.set(1 + (1 - s) * 0.6, s, 1 + (1 - s) * 0.6)
+    }
+
     moveState.current.moving = moving && grounded.current
     moveState.current.speed = vel.current.length()
-    moveState.current.sprinting = moving && grounded.current && maxSpeed === SPRINT
-    // publish position + speed so world props (the crates) can react to being hit
+    moveState.current.sprinting = moving && grounded.current && sprinting
+    moveState.current.airborne = !grounded.current
     if (playerRef) {
       playerRef.current.x = np.x; playerRef.current.y = charY.current; playerRef.current.z = np.z
       playerRef.current.speed = vel.current.length()
     }
-    moveState.current.airborne = !grounded.current
 
-    // footsteps
     if (moving && grounded.current) {
       step.current += dt * (0.9 + vel.current.length() * 0.12)
       if (step.current > 0.34) { step.current = 0; try { footstep() } catch {} }
     }
 
-    // advance the dust rings
     for (let i = 0; i < DUST_COUNT; i++) {
       const s = dustState.current[i], m = dust.current[i]
       if (!m) continue
@@ -174,29 +210,21 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
       m.material.opacity = (1 - s.t) * 0.45
     }
 
-    // ── camera: orbit on yaw + pitch, then keep it out of the scenery ──
+    // ── camera ────────────────────────────────────────────────────────────────
     const horiz = Math.cos(pitch.current) * dist.current
     let cx = np.x - Math.sin(yaw.current) * horiz
     let cz = np.z - Math.cos(yaw.current) * horiz
     let cy = charY.current + 1.4 + Math.sin(pitch.current) * dist.current
-
-    // don't let buildings swallow the camera
     for (const b of blockers) {
       const ddx = cx - b.x, ddz = cz - b.z
       const d = Math.hypot(ddx, ddz), min = b.r + 0.8
       if (d < min && d > 1e-4) { const push = (min - d) / d; cx += ddx * push; cz += ddz * push }
     }
-    // and never sink below the ground it's flying over
     cy = Math.max(cy, groundHeight(cx, cz) + 1.3)
-
     camPos.current.set(cx, cy, cz)
     camera.position.lerp(camPos.current, 1 - Math.exp(-8 * dt))
-
-    // smoothed aim point (decoupled from the character's bob/land)
     lookAt.current.lerp({ x: np.x, y: charY.current + 1.3, z: np.z }, 1 - Math.exp(-10 * dt))
     camera.lookAt(lookAt.current)
-
-    // impact shake, layered on top as a temporary modifier
     if (shake.current > 0.001) {
       shake.current *= Math.exp(-7 * dt)
       camera.position.x += (Math.random() - 0.5) * shake.current
@@ -204,7 +232,6 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
       camera.position.z += (Math.random() - 0.5) * shake.current
     }
 
-    // proximity
     let near = null, best = Infinity
     for (const it of interactables) {
       const d = Math.hypot(np.x - it.x, np.z - it.z)
@@ -216,7 +243,13 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
 
   return (
     <>
-      <group ref={rig} position={[spawn[0], 0, spawn[2]]}><Shinobi state={moveState} /></group>
+      <group ref={rig} position={[spawn[0], 0, spawn[2]]}>
+        <group ref={flipRig}>
+          <group ref={squash}>
+            <Shinobi state={moveState} />
+          </group>
+        </group>
+      </group>
       <group>
         {Array.from({ length: DUST_COUNT }).map((_, i) => (
           <mesh key={i} ref={(el) => (dust.current[i] = el)} rotation={[-Math.PI / 2, 0, 0]} visible={false}>

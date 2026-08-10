@@ -55,7 +55,7 @@ export default function LanternField({ lanterns, lit, scale = 0.85 }) {
                 emissiveIntensity={on ? 2.4 : 0}
               />
             </mesh>
-            {on && <pointLight color={C.goldLite} intensity={1.6} distance={7} decay={2} />}
+            {on && <pointLight color={C.goldLite} intensity={3.2} distance={12} decay={2} />}
           </group>
         )
       })}

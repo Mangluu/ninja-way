@@ -5,10 +5,10 @@ import * as THREE from 'three'
 import Scene from './world/Scene'
 import Controller from './world/Controller'
 import Effects from './effects'
-import { Intro, Hud, Prompt, Fade } from './ui'
+import { Intro, Hud, Prompt, Fade, ScrollPanel } from './ui'
 import { projects, SAHLOKA, ENV } from './data/content'
-import { blockers, pathLanterns, scrolls, bell } from './world/layout'
-import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect } from './sound.js'
+import { blockers, pathLanterns, scrolls, bell, taiko, sakura } from './world/layout'
+import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
 import './styles.css'
 
@@ -45,6 +45,9 @@ export default function App() {
   const [photo, setPhoto] = useState(false)
   const [raining, setRaining] = useState(false)
   const [rungAt, setRungAt] = useState(0)
+  const [taikoAt, setTaikoAt] = useState(0)
+  const [shaken, setShaken] = useState({})
+  const [reading, setReading] = useState(null)
   const toastTimer = useRef()
   const playerRef = useRef({ x: 0, y: 0, z: -2, speed: 0 })
 
@@ -63,8 +66,14 @@ export default function App() {
     })),
     ...scrolls.filter((s) => !found.has(s.id)).map((s) => ({
       id: s.id, type: 'scroll', name: 'A hidden scroll', tag: 'FOUND SOMETHING',
-      blurb: 'Someone left this here.', note: s.note,
-      cta: 'Read it', x: s.x, z: s.z, r: 2.8,
+      blurb: 'Tied with a red cord, and clearly meant to be found.', note: s.note,
+      cta: 'Unroll it', x: s.x, z: s.z, r: 2.8,
+    })),
+    { id: 'taiko', type: 'taiko', name: 'The great drum', tag: 'TAIKO',
+      blurb: 'Hide stretched over a barrel the size of a person. Hit it.', cta: 'Strike it', x: taiko.x, z: taiko.z, r: 3.2 },
+    ...sakura.map((t, i) => ({
+      id: `tree-${i}`, type: 'tree', name: 'Cherry tree', tag: 'IN BLOSSOM',
+      blurb: 'Heavy with blossom. A good shake would bring it down.', cta: 'Shake it', x: t.x, z: t.z, r: 2.6,
     })),
     { id: 'bell', type: 'bell', name: 'Shrine bell', tag: 'SUZU',
       blurb: 'Heavy, cold bronze. It wants to be struck.', cta: 'Ring it', x: bell.x, z: bell.z, r: 3.4 },
@@ -81,7 +90,15 @@ export default function App() {
       case 'scroll':
         setFound((s) => { const n = new Set(s); n.add(near.id); return n })
         try { collect() } catch {}
-        flash(near.note)
+        setReading(near)          // opens the scroll properly, rather than a toast
+        break
+      case 'taiko':
+        try { taikoHit() } catch {}
+        setTaikoAt(performance.now())
+        break
+      case 'tree':
+        try { rustle() } catch {}
+        setShaken((m) => ({ ...m, [near.id]: performance.now() }))
         break
       case 'bell':
         try { bellRing() } catch {}
@@ -109,7 +126,7 @@ export default function App() {
       if (e.code === 'KeyM') toggleMute()
       if (e.code === 'KeyP') setPhoto((p) => !p)
       if (e.code === 'KeyR') setRaining((r) => !r)
-      if (e.code === 'Escape') setPhoto(false)
+      if (e.code === 'Escape') { setPhoto(false); setReading(null) }
       if (e.code === 'KeyF') { try { cheer() } catch {}; flash('SIUUU') }
       seq.push(e.code); if (seq.length > konami.length) seq.shift()
       if (seq.join() === konami.join()) { try { cheer() } catch {}; flash('believe it') }
@@ -134,7 +151,7 @@ export default function App() {
         {/* drops resolution instead of dropping frames on weaker GPUs */}
         <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>
-          <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} playerRef={playerRef} />
+          <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} playerRef={playerRef} taikoAt={taikoAt} shaken={shaken} />
           <Controller spawn={[0, 0, -2]} blockers={blockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} />
           <Effects />
         </Suspense>
@@ -150,6 +167,7 @@ export default function App() {
         />
       )}
       {entered && !photo && <Prompt near={near} onAct={act} />}
+      <ScrollPanel scroll={reading} onClose={() => setReading(null)} />
       {entered && photo && <div className="photo-hint">photo mode · <b>P</b> or <b>Esc</b> to exit</div>}
       {toast && !photo && <div className="toast">{toast}</div>}
       <Fade on={leaving} />

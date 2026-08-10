@@ -7,7 +7,7 @@ export default function Effects() {
   return (
     <EffectComposer multisampling={0} disableNormalPass>
       <N8AO aoRadius={2.2} intensity={2.4} distanceFalloff={1.0} quality="medium" />
-      <Bloom mipmapBlur luminanceThreshold={0.85} luminanceSmoothing={0.2} intensity={0.85} levels={7} />
+      <Bloom mipmapBlur luminanceThreshold={0.55} luminanceSmoothing={0.25} intensity={1.45} levels={7} />
       <ToneMapping mode={ToneMappingMode.AGX} />
       <Vignette offset={0.22} darkness={0.62} eskil={false} />
       <SMAA />

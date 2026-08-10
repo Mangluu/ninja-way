@@ -57,7 +57,6 @@ export function Prompt({ near, onAct }) {
       <div className="prompt-tag">{isSahloka ? 'THE SUMMIT' : near.tag}</div>
       <div className="prompt-name">{near.name}</div>
       <p className="prompt-blurb">{near.blurb}</p>
-      {near.note && <p className="prompt-note">“{near.note}”</p>}
       <button className={`prompt-btn ${isSahloka ? 'gold' : ''}`} onClick={onAct}>
         {isSahloka ? 'Enter Sahloka ⛩' : (near.cta || 'Open')} <span className="key">E</span>
       </button>
@@ -67,4 +66,22 @@ export function Prompt({ near, onAct }) {
 
 export function Fade({ on }) {
   return <div className={`fade ${on ? 'fade-on' : ''}`} />
+}
+
+// A scroll opens into something worth reading, rather than a giant toast.
+export function ScrollPanel({ scroll, onClose }) {
+  if (!scroll) return null
+  return (
+    <div className="scroll-wrap" onClick={onClose}>
+      <div className="scroll-card" onClick={(e) => e.stopPropagation()}>
+        <div className="scroll-rod top" />
+        <div className="scroll-body">
+          <div className="scroll-kicker">a scroll, unrolled</div>
+          <p className="scroll-text">{scroll.note}</p>
+        </div>
+        <div className="scroll-rod bottom" />
+        <button className="scroll-close" onClick={onClose}>roll it up <span className="key">Esc</span></button>
+      </div>
+    </div>
+  )
 }

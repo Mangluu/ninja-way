@@ -244,3 +244,40 @@ export function crateHit(vol = 1) {
   const og = c.createGain(); env(og, t, 0.004, 0.11, 0.10 * vol)
   o.connect(og).connect(out()); o.start(t); o.stop(t + 0.18)
 }
+
+// the great drum — a deep body tone with a slap on top
+export function taikoHit() {
+  const c = initAudio(), t = c.currentTime
+  const o = c.createOscillator(); o.type = 'sine'
+  o.frequency.setValueAtTime(118, t)
+  o.frequency.exponentialRampToValueAtTime(41, t + 0.5)
+  const g = c.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.exponentialRampToValueAtTime(0.42, t + 0.006)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0)
+  o.connect(g).connect(out()); o.start(t); o.stop(t + 1.1)
+  const n = c.createBufferSource()
+  const buf = c.createBuffer(1, c.sampleRate * 0.2, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.4)
+  n.buffer = buf
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = 0.9
+  const ng = c.createGain(); env(ng, t, 0.004, 0.2, 0.2)
+  n.connect(bp).connect(ng).connect(out()); n.start(t)
+}
+
+// leaves rustling when a tree is shaken
+export function rustle() {
+  const c = initAudio(), t = c.currentTime
+  const n = c.createBufferSource()
+  const buf = c.createBuffer(1, c.sampleRate * 1.0, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) {
+    const env2 = Math.sin((i / d.length) * Math.PI)
+    d[i] = (Math.random() * 2 - 1) * env2 * env2
+  }
+  n.buffer = buf
+  const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1900
+  const g = c.createGain(); g.gain.value = 0.13
+  n.connect(hp).connect(g).connect(out()); n.start(t)
+}

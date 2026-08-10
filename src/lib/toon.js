@@ -3,10 +3,11 @@ import * as THREE from 'three'
 // A cel-shading gradient map: hard steps instead of smooth shading. This single
 // texture, fed to MeshToonMaterial everywhere, is what makes the world read
 // "anime/stylized" instead of "flat primitive".
-// The darkest band is lifted off zero: a ramp that bottoms out at black crushes
+// At night the floor drops: shadows should read as dark, just never as holes.
+// The darkest band is still lifted off zero: a ramp that bottoms out at black crushes
 // every surface facing away from the sun into silhouette, which is what made the
 // temple roofs read as holes. A floor keeps shadowed faces readable and coloured.
-const SHADOW_FLOOR = 0.42
+const SHADOW_FLOOR = 0.30
 
 function makeGradient(steps) {
   const data = new Uint8Array(steps)

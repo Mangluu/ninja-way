@@ -32,15 +32,18 @@ export const C = {
 }
 
 // Environment — a golden-hour dusk. Warm, cel-shades beautifully, makes gold glow.
+// Environment — a moonlit night. The village is dark enough that the lanterns
+// you light are genuinely the light source, not decoration on top of daylight.
 export const ENV = {
-  skyTop: '#2b3f6b',
-  skyMid: '#c98b6e',
-  skyBottom: '#f0c48a',
-  fog: '#d7a878',
+  skyTop: '#070d22',
+  skyMid: '#111c3d',
+  skyBottom: '#26314f',
+  fog: '#101a33',
   fogNear: 14,
-  fogFar: 120,
-  sun: '#ffdba6',
-  ground: '#6d7a4f',
+  fogFar: 105,
+  sun: '#aabfe8',          // moonlight, not sunlight
+  ground: '#2f3a30',
+  moon: '#dce8ff',
 }
 
 // SAHLOKA — the star everything orbits. On a hill at the far end, always visible.
