@@ -245,24 +245,28 @@ export function crateHit(vol = 1) {
   o.connect(og).connect(out()); o.start(t); o.stop(t + 0.18)
 }
 
-// the great drum — a deep body tone with a slap on top
+// the great drum — deep, loud, and long. Two body tones an octave apart plus a
+// hard rim slap; this should feel like it moves air.
 export function taikoHit() {
   const c = initAudio(), t = c.currentTime
-  const o = c.createOscillator(); o.type = 'sine'
-  o.frequency.setValueAtTime(118, t)
-  o.frequency.exponentialRampToValueAtTime(41, t + 0.5)
-  const g = c.createGain()
-  g.gain.setValueAtTime(0.0001, t)
-  g.gain.exponentialRampToValueAtTime(0.42, t + 0.006)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.0)
-  o.connect(g).connect(out()); o.start(t); o.stop(t + 1.1)
+  ;[[126, 0.62, 1.5], [63, 0.42, 1.9]].forEach(([f, amp, len]) => {
+    const o = c.createOscillator(); o.type = 'sine'
+    o.frequency.setValueAtTime(f, t)
+    o.frequency.exponentialRampToValueAtTime(f * 0.34, t + len * 0.6)
+    const g = c.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(amp, t + 0.005)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len)
+    o.connect(g).connect(out()); o.start(t); o.stop(t + len + 0.1)
+  })
+  // the stick hitting hide
   const n = c.createBufferSource()
-  const buf = c.createBuffer(1, c.sampleRate * 0.2, c.sampleRate)
+  const buf = c.createBuffer(1, c.sampleRate * 0.26, c.sampleRate)
   const d = buf.getChannelData(0)
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.4)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.0)
   n.buffer = buf
-  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = 0.9
-  const ng = c.createGain(); env(ng, t, 0.004, 0.2, 0.2)
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 460; bp.Q.value = 0.7
+  const ng = c.createGain(); env(ng, t, 0.003, 0.26, 0.34)
   n.connect(bp).connect(ng).connect(out()); n.start(t)
 }
 

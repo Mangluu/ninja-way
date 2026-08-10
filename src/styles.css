@@ -172,7 +172,14 @@ button { font-family: inherit; cursor: pointer; }
 }
 .scroll-card {
   width: min(520px, calc(100vw - 48px));
-  animation: rise 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
+  /* Its own keyframe: `rise` carries translate(-50%) for the prompt, which is
+     positioned with left:50%. This card is grid-centred, so borrowing that
+     animation shifted it left and then snapped it back when the animation ended. */
+  animation: unroll 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes unroll {
+  from { opacity: 0; transform: translateY(14px) scaleY(0.92); }
+  to   { opacity: 1; transform: none; }
 }
 .scroll-rod {
   height: 14px; border-radius: 7px;

@@ -1,5 +1,6 @@
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { Outlines } from '@react-three/drei'
 import { C } from '../data/content'
 import { gradientMap } from '../lib/toon'
@@ -172,7 +173,47 @@ export function Sakura({ position = [0, 0, 0], scale = 1, seed = 0, shookAt = 0 
           </mesh>
         ))}
       </group>
+      <FallenPetals shookAt={shookAt} />
     </group>
+  )
+}
+
+// Blossom shaken loose: a burst that tumbles down and fades, reused each shake.
+function FallenPetals({ shookAt = 0, count = 26 }) {
+  const mesh = useRef()
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const seeds = useMemo(() => Array.from({ length: count }, () => ({
+    x: (Math.random() - 0.5) * 2.6,
+    z: (Math.random() - 0.5) * 2.6,
+    y: 1.6 + Math.random() * 1.4,
+    fall: 0.9 + Math.random() * 0.9,
+    drift: Math.random() * 6.28,
+    spin: (Math.random() - 0.5) * 5,
+    s: 0.10 + Math.random() * 0.07,
+  })), [count])
+
+  useFrame(() => {
+    if (!mesh.current) return
+    if (!shookAt) { mesh.current.visible = false; return }
+    const dt = (performance.now() - shookAt) / 1000
+    if (dt > 4) { mesh.current.visible = false; return }
+    mesh.current.visible = true
+    seeds.forEach((p, i) => {
+      const y = p.y - dt * p.fall
+      dummy.position.set(p.x + Math.sin(dt * 1.6 + p.drift) * 0.5, Math.max(y, 0.02), p.z + Math.cos(dt * 1.2 + p.drift) * 0.4)
+      dummy.rotation.set(dt * p.spin, dt * p.spin * 0.6, p.drift)
+      dummy.scale.setScalar(p.s * Math.max(0, 1 - dt / 4))
+      dummy.updateMatrix()
+      mesh.current.setMatrixAt(i, dummy.matrix)
+    })
+    mesh.current.instanceMatrix.needsUpdate = true
+  })
+
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, count]} frustumCulled={false} visible={false}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial color={C.sakura} side={THREE.DoubleSide} transparent opacity={0.95} />
+    </instancedMesh>
   )
 }
 

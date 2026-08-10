@@ -61,8 +61,7 @@ export const hangingLanterns = [
   { x: 15, z: 40, color: C.vermilion }, { x: -9, z: 54, color: C.gold },
 ]
 
-// Circles the player cannot walk into. (Hill is NOT a blocker — it's climbable, see groundHeight.)
-export const blockers = houses.map((h) => ({ x: h.x, z: h.z, r: 2.4 }))
+
 
 // The Sahloka hill as a smooth height field so the player can walk UP to the gate.
 export const HILL = { x: SAHLOKA.x, z: SAHLOKA.z, top: 4.5, rTop: 7, rBot: 15 }
@@ -83,3 +82,32 @@ export const crateStacks = [
 
 // The great drum, off the path in the village square.
 export const taiko = { id: 'taiko', x: 6, z: 22 }
+
+// Gate posts along the approach, plus the entrance torii.
+export const gateBlockers = [
+  ...toriiPosts(0, -5, 1.5),
+  ...Array.from({ length: 6 }, (_, i) => toriiPosts(0, SAHLOKA.z - 16 - i * 6, 1.0 + i * 0.12)).flat(),
+]
+
+// Everything solid the player can bump into. Built from the prop lists rather
+// than hand-maintained, so adding a tree or a lantern automatically adds its
+// collider. The hill is deliberately absent — it is walkable terrain, handled
+// by groundHeight below. Crates are absent too: knocking those about is the
+// point, so they are pushed rather than blocked.
+export const blockers = [
+  ...houses.map((h) => ({ x: h.x, z: h.z, r: 2.4 })),
+  ...sakura.map((t) => ({ x: t.x, z: t.z, r: 0.45 * t.s })),
+  ...pines.map((t) => ({ x: t.x, z: t.z, r: 0.34 * t.s })),
+  ...rocks.map((r) => ({ x: r.x, z: r.z, r: 0.62 * r.s })),
+  ...pathLanterns.map((l) => ({ x: l.x, z: l.z, r: 0.42 })),
+  ...hangingLanterns.map((l) => ({ x: l.x, z: l.z, r: 0.28 })),
+  ...scrolls.map((s) => ({ x: s.x, z: s.z, r: 0.42 })),
+  { x: bell.x, z: bell.z, r: 1.25 },
+  { x: taiko.x, z: taiko.z, r: 1.2 },
+]
+
+// Torii posts block, but the gap between them does not — you walk through a gate.
+export function toriiPosts(x, z, scale) {
+  const half = 1.5 * scale
+  return [{ x: x - half, z, r: 0.3 * scale }, { x: x + half, z, r: 0.3 * scale }]
+}

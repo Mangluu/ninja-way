@@ -7,7 +7,7 @@ import Controller from './world/Controller'
 import Effects from './effects'
 import { Intro, Hud, Prompt, Fade, ScrollPanel } from './ui'
 import { projects, SAHLOKA, ENV } from './data/content'
-import { blockers, pathLanterns, scrolls, bell, taiko, sakura } from './world/layout'
+import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura } from './world/layout'
 import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
 import './styles.css'
@@ -50,6 +50,12 @@ export default function App() {
   const [reading, setReading] = useState(null)
   const toastTimer = useRef()
   const playerRef = useRef({ x: 0, y: 0, z: -2, speed: 0 })
+  // project pedestals are solid too
+  const allBlockers = useMemo(() => ([
+    ...blockers,
+    ...gateBlockers,
+    ...projects.map((p) => ({ x: p.x, z: p.z, r: 0.6 })),
+  ]), [])
 
   const flash = (t) => { setToast(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(null), 2600) }
 
@@ -152,7 +158,7 @@ export default function App() {
         <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>
           <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} playerRef={playerRef} taikoAt={taikoAt} shaken={shaken} />
-          <Controller spawn={[0, 0, -2]} blockers={blockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} />
+          <Controller spawn={[0, 0, -2]} blockers={allBlockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} />
           <Effects />
         </Suspense>
       </Canvas>
