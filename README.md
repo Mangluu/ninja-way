@@ -35,5 +35,7 @@ Ships to GitHub Pages via `.github/workflows/deploy.yml` on every push to `main`
 ## Credits
 
 The procedural texture engine — the runtime-generated wood, stone, plaster, roof
-tile, lacquer and paper that every surface in the village is drawn with — is
-and the curved temple-roof geometry are adapted from **[KAGE](https://github.com/MengTo/kage)** by **[Meng To](https://github.com/MengTo)*. Thank you.
+tile, lacquer and paper that every surface here is drawn with — and the curved
+temple-roof geometry are adapted from **[KAGE](https://github.com/MengTo/kage)**
+by **[Meng To](https://github.com/MengTo)**, used with his kind permission.
+Thank you.
