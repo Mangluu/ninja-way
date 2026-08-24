@@ -20,7 +20,7 @@ const TAU = Math.PI * 2
 
 const shortAngle = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d }
 
-export default function Controller({ spawn = [0, 0, -2], blockers = [], interactables = [], onProximity, playerRef }) {
+export default function Controller({ spawn = [0, 0, -2], blockers = [], interactables = [], onProximity, playerRef, lit = 0 }) {
   const rig = useRef()        // world position + facing
   const flipRig = useRef()    // somersault, *inside* facing so the axis is always "forward"
   const squash = useRef()     // landing squash / take-off stretch
@@ -52,6 +52,13 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
 
   const lookAt = useRef(new THREE.Vector3(spawn[0], 1.3, spawn[2]))
   const camPos = useRef(new THREE.Vector3())
+
+  // The second jump is a clone assist: a copy flashes into being underneath and
+  // you push off it. It reads as gaining height off something, which a
+  // somersault never did — that just said "spinning".
+  const clone = useRef()
+  const cloneT = useRef(1)
+  const clonePos = useRef(new THREE.Vector3())
 
   const dust = useRef([])
   const dustState = useRef(Array.from({ length: DUST_COUNT }, () => ({ t: 1, x: 0, y: 0, z: 0 })))
@@ -132,6 +139,8 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
       vy.current = JUMP * 0.92
       jumps.current = 2
       flip.current = 0
+      cloneT.current = 0
+      clonePos.current.set(np.x, charY.current - 0.15, np.z)
       try { doubleJump() } catch {}
       if (!reduced) {
         const slot = dustState.current[dustNext.current % DUST_COUNT]
@@ -178,7 +187,10 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     // roll regardless of which way the character happens to be pointing. That
     // was the old bug: rotating the same group that carried facing meant the
     // flip axis changed with your last direction of travel.
-    if (flipRig.current) flipRig.current.rotation.x = flip.current < 1 ? flip.current * TAU : 0
+    // a short tuck as he pushes off the clone, rather than a full roll
+    if (flipRig.current) {
+      flipRig.current.rotation.x = flip.current < 1 ? Math.sin(flip.current * Math.PI) * 0.55 : 0
+    }
     if (squash.current && !reduced) {
       const s = 1 - Math.sin(squashT.current * Math.PI) * 0.16
       squash.current.scale.set(1 + (1 - s) * 0.6, s, 1 + (1 - s) * 0.6)
@@ -246,10 +258,26 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
       <group ref={rig} position={[spawn[0], 0, spawn[2]]}>
         <group ref={flipRig}>
           <group ref={squash}>
-            <Shinobi state={moveState} />
+            <Shinobi state={moveState} lit={lit} />
           </group>
         </group>
       </group>
+      {/* the clone — a suggestion of him, not a second character */}
+      <group ref={clone} visible={false}>
+        <mesh position={[0, 0.95, 0]}>
+          <capsuleGeometry args={[0.3, 0.42, 6, 12]} />
+          <meshBasicMaterial color={C.indigo} transparent opacity={0} depthWrite={false} />
+        </mesh>
+        <mesh position={[0, 1.5, 0.02]}>
+          <sphereGeometry args={[0.29, 12, 12]} />
+          <meshBasicMaterial color={C.washi} transparent opacity={0} depthWrite={false} />
+        </mesh>
+        <mesh position={[0, 0.66, 0]}>
+          <coneGeometry args={[0.42, 0.5, 12]} />
+          <meshBasicMaterial color={C.indigoDeep} transparent opacity={0} depthWrite={false} />
+        </mesh>
+      </group>
+
       <group>
         {Array.from({ length: DUST_COUNT }).map((_, i) => (
           <mesh key={i} ref={(el) => (dust.current[i] = el)} rotation={[-Math.PI / 2, 0, 0]} visible={false}>

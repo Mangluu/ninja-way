@@ -6,7 +6,7 @@ import Scene from './world/Scene'
 import Controller from './world/Controller'
 import Effects from './effects'
 import { Intro, Hud, Prompt, Fade, ScrollPanel } from './ui'
-import { projects, SAHLOKA, ENV } from './data/content'
+import { projects, SAHLOKA, ENV, rankFor } from './data/content'
 import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura } from './world/layout'
 import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
@@ -89,10 +89,19 @@ export default function App() {
   const act = () => {
     if (!near) return
     switch (near.type) {
-      case 'lantern':
-        setLit((s) => { const n = new Set(s); n.add(near.id); return n })
+      case 'lantern': {
+        setLit((s) => {
+          const n = new Set(s); n.add(near.id)
+          // only speak up when the lantern actually promotes him
+          const before = rankFor(s.size), after = rankFor(n.size)
+          if (after.name !== before.name) {
+            setTimeout(() => { try { cheer() } catch {} ; flash(after.name) }, 260)
+          }
+          return n
+        })
         try { lightUp() } catch {}
         break
+      }
       case 'scroll':
         setFound((s) => { const n = new Set(s); n.add(near.id); return n })
         try { collect() } catch {}
@@ -158,7 +167,7 @@ export default function App() {
         <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>
           <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} playerRef={playerRef} taikoAt={taikoAt} shaken={shaken} />
-          <Controller spawn={[0, 0, -2]} blockers={allBlockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} />
+          <Controller spawn={[0, 0, -2]} blockers={allBlockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} lit={lit.size} />
           <Effects />
         </Suspense>
       </Canvas>
@@ -167,7 +176,7 @@ export default function App() {
       {entered && !photo && (
         <Hud
           muted={muted} onToggleMute={toggleMute}
-          lit={lit.size} lanterns={totals.lanterns}
+          lit={lit.size} lanterns={totals.lanterns} rank={rankFor(lit.size)}
           found={found.size} scrolls={totals.scrolls}
           raining={raining}
         />

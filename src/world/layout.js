@@ -38,10 +38,11 @@ export const rocks = [
 // three units of clearance from a gate.
 export const pathLanterns = [
   { id: 'lantern-0', x: -2.4, z: 8 },
-  { id: 'lantern-1', x: 2.4, z: 19 },
-  { id: 'lantern-2', x: -2.4, z: 31 },
-  { id: 'lantern-3', x: 2.4, z: 43 },
-  { id: 'lantern-4', x: -2.4, z: 55 },
+  { id: 'lantern-1', x: 2.4, z: 17 },
+  { id: 'lantern-2', x: -2.4, z: 25 },
+  { id: 'lantern-3', x: 2.4, z: 37 },
+  { id: 'lantern-4', x: -2.4, z: 49 },
+  { id: 'lantern-5', x: 2.4, z: 62 },
 ]
 
 // Hidden scrolls — tucked off the path, behind things, for people who wander.

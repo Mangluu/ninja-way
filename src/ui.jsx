@@ -19,7 +19,7 @@ export function Intro({ onEnter }) {
   )
 }
 
-export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scrolls = 0, raining = false }) {
+export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scrolls = 0, raining = false, rank }) {
   return (
     <>
       <div className="chip">
@@ -27,6 +27,7 @@ export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scr
       </div>
 
       <div className="tally">
+        {rank && <span className="rank" title={rank.note}>{rank.name}</span>}
         <span className={lit === lanterns ? 'done' : ''}>🏮 {lit}/{lanterns}</span>
         <span className={found === scrolls ? 'done' : ''}>📜 {found}/{scrolls}</span>
         {raining && <span className="rain-on">🌧 raining</span>}

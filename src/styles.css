@@ -211,3 +211,13 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.14);
   border-radius: 5px; padding: 2px 6px;
 }
+
+/* the rank sits ahead of the counters — it is the thing that changed */
+.tally .rank {
+  color: var(--gold-lite);
+  border-color: rgba(230, 178, 77, 0.45);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 600;
+}

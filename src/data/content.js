@@ -24,6 +24,8 @@ export const C = {
   washi: '#efe7d6',
   sumi: '#2b2823',
   gold: '#e6b24d', goldLite: '#ffd98a',
+  orange: '#e8752c', orangeLite: '#ff9a4d',
+  steel: '#9fb0c4',
   sakura: '#e8a9b8', sakuraDeep: '#d98ca0',
   leaf: '#6f8f5f', leafDark: '#4e6b4a',
   stone: '#9a958a', stoneDark: '#6f6b62',
@@ -103,3 +105,22 @@ export const facts = [
 
 // World bounds (XZ). Forward toward Sahloka is +Z.
 export const WORLD = { minX: -22, maxX: 22, minZ: -8, maxZ: 82 }
+
+// ── The rank ladder ─────────────────────────────────────────────────────────
+// Every lantern you light changes the character. The four named ranks are the
+// milestones; the lanterns between them still shift something smaller, so no
+// lantern feels like it did nothing. Someone who lights one and leaves still
+// sees a coherent shinobi — someone who lights all six watches him become
+// somebody.
+export const RANKS = [
+  { at: 0, name: 'Academy', note: 'No plate. Nobody yet.' },
+  { at: 1, name: 'Genin', note: 'The plate is fitted to the band.' },
+  { at: 3, name: 'Chūnin', note: 'Hood down. He stopped hiding.' },
+  { at: 5, name: 'Jōnin', note: 'Orange. He is not asking permission.' },
+]
+
+export function rankFor(lit) {
+  let r = RANKS[0]
+  for (const k of RANKS) if (lit >= k.at) r = k
+  return r
+}
