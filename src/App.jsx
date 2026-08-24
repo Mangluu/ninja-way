@@ -5,9 +5,9 @@ import * as THREE from 'three'
 import Scene from './world/Scene'
 import Controller from './world/Controller'
 import Effects from './effects'
-import { Intro, Hud, Prompt, Fade, ScrollPanel } from './ui'
-import { projects, SAHLOKA, ENV, rankFor } from './data/content'
-import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura } from './world/layout'
+import { Intro, Hud, Prompt, Fade, ScrollPanel, SpeechPanel } from './ui'
+import { projects, SAHLOKA, ENV, rankFor, VILLAGER_LINES, senseiProgress } from './data/content'
+import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura, villagers } from './world/layout'
 import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
 import './styles.css'
@@ -48,6 +48,8 @@ export default function App() {
   const [taikoAt, setTaikoAt] = useState(0)
   const [shaken, setShaken] = useState({})
   const [reading, setReading] = useState(null)
+  const [talking, setTalking] = useState(null)
+  const heard = useRef({})
   const toastTimer = useRef()
   const playerRef = useRef({ x: 0, y: 0, z: -2, speed: 0 })
   // project pedestals are solid too
@@ -74,6 +76,11 @@ export default function App() {
       id: s.id, type: 'scroll', name: 'A hidden scroll', tag: 'FOUND SOMETHING',
       blurb: 'Tied with a red cord, and clearly meant to be found.', note: s.note,
       cta: 'Unroll it', x: s.x, z: s.z, r: 2.8,
+    })),
+    ...villagers.map((v) => ({
+      id: v.id, type: 'villager', kind: v.kind, name: v.name, tag: 'SOMEONE HERE',
+      blurb: v.kind === 'sensei' ? 'Reading. Or pretending to.' : 'Looks like they have something to say.',
+      cta: 'Listen', x: v.x, z: v.z, r: 4.2,
     })),
     { id: 'taiko', type: 'taiko', name: 'The great drum', tag: 'TAIKO',
       blurb: 'Hide stretched over a barrel the size of a person. Hit it.', cta: 'Strike it', x: taiko.x, z: taiko.z, r: 3.2 },
@@ -114,6 +121,23 @@ export default function App() {
         try { collect() } catch {}
         setReading(near)          // opens the scroll properly, rather than a toast
         break
+      case 'villager': {
+        // the sensei reads the room; the others work through their own lines
+        let line
+        if (near.kind === 'sensei') {
+          const i = heard.current.sensei || 0
+          line = i === 0 ? senseiProgress(lit.size) : VILLAGER_LINES.sensei[(i - 1) % VILLAGER_LINES.sensei.length]
+          heard.current.sensei = i + 1
+        } else {
+          const pool = VILLAGER_LINES[near.kind] || []
+          const i = heard.current[near.kind] || 0
+          line = pool[i % pool.length]
+          heard.current[near.kind] = i + 1
+        }
+        try { ping() } catch {}
+        setTalking({ name: near.name, line })
+        break
+      }
       case 'taiko':
         try { taikoHit() } catch {}
         setTaikoAt(performance.now())
@@ -148,7 +172,7 @@ export default function App() {
       if (e.code === 'KeyM') toggleMute()
       if (e.code === 'KeyP') setPhoto((p) => !p)
       if (e.code === 'KeyR') setRaining((r) => !r)
-      if (e.code === 'Escape') { setPhoto(false); setReading(null) }
+      if (e.code === 'Escape') { setPhoto(false); setReading(null); setTalking(null) }
       if (e.code === 'KeyF') { try { cheer() } catch {}; flash('SIUUU') }
       seq.push(e.code); if (seq.length > konami.length) seq.shift()
       if (seq.join() === konami.join()) { try { cheer() } catch {}; flash('believe it') }
@@ -190,6 +214,7 @@ export default function App() {
       )}
       {entered && !photo && <Prompt near={near} onAct={act} />}
       <ScrollPanel scroll={reading} onClose={() => setReading(null)} />
+      <SpeechPanel talk={talking} onClose={() => setTalking(null)} />
       {entered && photo && <div className="photo-hint">photo mode · <b>P</b> or <b>Esc</b> to exit</div>}
       {toast && !photo && <div className="toast">{toast}</div>}
       <Fade on={leaving} />

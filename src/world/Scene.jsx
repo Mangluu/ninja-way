@@ -5,12 +5,13 @@ import { C, ENV, projects } from '../data/content'
 import { gradientMap } from '../lib/toon'
 import { groundMat, stone } from '../lib/materials'
 import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock, Scroll, Bell, Taiko } from './props'
-import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell, crateStacks, taiko, groundHeight } from './layout'
+import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell, crateStacks, taiko, villagers, groundHeight } from './layout'
 import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
 import LightBudget from './LightBudget'
 import LanternField from './LanternField'
 import FoxPresence from './FoxPresence'
+import Villager from './Villager'
 import Crates from './Crates'
 
 function Toon(p) { return <meshToonMaterial gradientMap={gradientMap} {...p} /> }
@@ -184,6 +185,8 @@ export default function Scene({ lit, found, rungAt = 0, raining = false, playerR
 
       {/* discoverable projects */}
       {projects.map((p) => <ProjectSpot key={p.id} x={p.x} z={p.z} color={p.color} />)}
+
+      {villagers.map((v) => <Villager key={v.id} kind={v.kind} anchor={[v.x, v.z]} radius={v.r} />)}
 
       <FoxPresence lit={litCount} litIds={lit} playerRef={playerRef} />
 

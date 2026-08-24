@@ -124,3 +124,33 @@ export function rankFor(lit) {
   for (const k of RANKS) if (lit >= k.at) r = k
   return r
 }
+
+// ── What the village says about him ─────────────────────────────────────────
+// All three talk about the player in the third person, so the portfolio keeps
+// working without anyone stopping to deliver a CV. The sensei reads the room
+// out loud and never looks up from his book.
+export const VILLAGER_LINES = {
+  cook: [
+    'That one comes in after every trip. Talks about the team the whole way through. Never once about the trophy.',
+    'He told me the tech is only ever the excuse. The best part is the people. Then he ordered a second bowl.',
+    'Two of those Baltic contests, two wins. You would think he would lead with that. He leads with the group chat.',
+  ],
+  rival: [
+    'Luck. You shout something ridiculous at a laptop and it wins a jam in Leiden. That is not skill, that is a good week.',
+    'Twice at the Baltic thing. Nobody wins that twice. So it is the teams he picks. Obviously.',
+    'Ask him about the Aalto one. Second place, that one. ...He tells people that himself, actually. Which is somehow worse.',
+    'He named a team Akatsuki. Grown man. Named a team Akatsuki.',
+  ],
+  sensei: [
+    'He fell for the idea of another world before there was a word for it. Watched a film about it, and never quite came back.',
+  ],
+}
+
+// The sensei narrates whatever rank the player has actually reached.
+export function senseiProgress(lit) {
+  if (lit >= 6) return 'All six lit. Something on the hill has noticed him. I would not go up there tonight.'
+  if (lit >= 5) return 'Orange, now. He has stopped asking permission. That happens around the fifth.'
+  if (lit >= 3) return 'The hood is down. He has stopped hiding, which is harder than any of the climbing.'
+  if (lit >= 1) return 'The plate is on the band. One lantern lit. A start is not nothing.'
+  return 'An academy student passes. He has lit nothing at all. The village stays exactly as dark as he found it.'
+}

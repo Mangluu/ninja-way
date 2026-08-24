@@ -86,3 +86,20 @@ export function ScrollPanel({ scroll, onClose }) {
     </div>
   )
 }
+
+// Someone talking about you while you stand there. Deliberately plainer than
+// the scroll: a scroll is a found object, this is just a person speaking.
+export function SpeechPanel({ talk, onClose }) {
+  if (!talk) return null
+  return (
+    <div className="speech-wrap" onClick={onClose}>
+      <div className="speech-card" onClick={(e) => e.stopPropagation()}>
+        <div className="speech-who">{talk.name}</div>
+        <p className="speech-line">“{talk.line}”</p>
+        <button className="speech-close" onClick={onClose}>
+          walk on <span className="key">Esc</span>
+        </button>
+      </div>
+    </div>
+  )
+}

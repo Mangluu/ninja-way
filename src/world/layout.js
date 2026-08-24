@@ -112,3 +112,11 @@ export function toriiPosts(x, z, scale) {
   const half = 1.5 * scale
   return [{ x: x - half, z, r: 0.3 * scale }, { x: x + half, z, r: 0.3 * scale }]
 }
+
+// Three villagers, each drifting around their own patch of the square. Placed
+// clear of the houses, the bell, the drum and the waypoints.
+export const villagers = [
+  { id: 'cook',   kind: 'cook',   name: 'The ramen cook', x: 5,  z: 12, r: 2.6 },
+  { id: 'rival',  kind: 'rival',  name: 'A rival',        x: -7, z: 36, r: 2.6 },
+  { id: 'sensei', kind: 'sensei', name: 'The sensei',     x: 6,  z: 52, r: 2.6 },
+]
