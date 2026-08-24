@@ -8,7 +8,7 @@ import Effects from './effects'
 import { Intro, Hud, Prompt, Fade, ScrollPanel } from './ui'
 import { projects, SAHLOKA, ENV, rankFor } from './data/content'
 import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura } from './world/layout'
-import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle } from './sound.js'
+import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
 import './styles.css'
 
@@ -97,6 +97,13 @@ export default function App() {
           if (after.name !== before.name) {
             setTimeout(() => { try { cheer() } catch {} ; flash(after.name) }, 260)
           }
+          // Something starts breathing at the third lantern.
+          if (n.size === 3) setTimeout(() => { try { startBreathing() } catch {} }, 1400)
+          // At the fifth, the shrine bell rings on its own. Nobody touched it.
+          if (n.size === 5) setTimeout(() => {
+            try { bellRing() } catch {}
+            setRungAt(performance.now())
+          }, 2200)
           return n
         })
         try { lightUp() } catch {}

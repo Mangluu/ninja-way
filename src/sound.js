@@ -285,3 +285,60 @@ export function rustle() {
   const g = c.createGain(); g.gain.value = 0.13
   n.connect(hp).connect(g).connect(out()); n.start(t)
 }
+
+// Something large, breathing slowly, just under the wind. It arrives at the
+// third lantern and never leaves. Pitched low enough that you feel it before
+// you notice it, which is the point.
+let breathing = null
+export function startBreathing() {
+  if (breathing) return
+  const c = initAudio(), t = c.currentTime
+
+  const buf = c.createBuffer(1, c.sampleRate * 6, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5
+  const src = c.createBufferSource()
+  src.buffer = buf
+  src.loop = true
+
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.value = 190
+  lp.Q.value = 1.6
+
+  const gain = c.createGain()
+  gain.gain.value = 0.0001
+
+  // the breath itself: a slow swell and fall, about ten a minute
+  const lfo = c.createOscillator()
+  lfo.type = 'sine'
+  lfo.frequency.value = 0.17
+  const lfoGain = c.createGain()
+  lfoGain.gain.value = 0.055
+  lfo.connect(lfoGain).connect(gain.gain)
+  lfo.start(t)
+
+  src.connect(lp).connect(gain).connect(out())
+  src.start(t)
+
+  // a low body under the breath
+  const sub = c.createOscillator()
+  sub.type = 'sine'
+  sub.frequency.value = 41
+  const subGain = c.createGain()
+  subGain.gain.value = 0.0001
+  const subLfo = c.createOscillator()
+  subLfo.frequency.value = 0.17
+  const subLfoGain = c.createGain()
+  subLfoGain.gain.value = 0.03
+  subLfo.connect(subLfoGain).connect(subGain.gain)
+  subLfo.start(t)
+  sub.connect(subGain).connect(out())
+  sub.start(t)
+
+  // it fades in over half a minute, so nobody catches it starting
+  gain.gain.setTargetAtTime(0.062, t, 12)
+  subGain.gain.setTargetAtTime(0.034, t, 12)
+
+  breathing = { gain, subGain }
+}

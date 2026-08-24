@@ -10,6 +10,7 @@ import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
 import LightBudget from './LightBudget'
 import LanternField from './LanternField'
+import FoxPresence from './FoxPresence'
 import Crates from './Crates'
 
 function Toon(p) { return <meshToonMaterial gradientMap={gradientMap} {...p} /> }
@@ -135,6 +136,7 @@ function ProjectSpot({ x, z, color }) {
 }
 
 export default function Scene({ lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {} }) {
+  const litCount = lit?.size || 0
   return (
     <>
       <LightBudget />
@@ -182,6 +184,8 @@ export default function Scene({ lit, found, rungAt = 0, raining = false, playerR
 
       {/* discoverable projects */}
       {projects.map((p) => <ProjectSpot key={p.id} x={p.x} z={p.z} color={p.color} />)}
+
+      <FoxPresence lit={litCount} litIds={lit} playerRef={playerRef} />
 
       <Atmosphere raining={raining} />
 

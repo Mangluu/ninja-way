@@ -10,7 +10,7 @@ const SPEED = 6, SPRINT = 10, CHAR_R = 0.45
 const JUMP = 8.0
 const GRAV_UP = 18          // lighter going up…
 const GRAV_DOWN = 30        // …heavier coming down: the classic platformer arc
-const CUT = 0.45            // releasing jump early keeps this much upward speed
+const CUT = 0.5             // let go early and the rise is halved, once
 const COYOTE = 0.12         // still jumpable this long after leaving the ground
 const BUFFER = 0.15         // a jump pressed this early still fires on landing
 const AIR_CONTROL = 0.35    // you can steer in the air, but not pivot on a dime
@@ -122,6 +122,7 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     const groundY = groundHeight(np.x, np.z)
     const spaceNow = !!k.Space
     const pressed = spaceNow && !spacePrev.current
+    const released = !spaceNow && spacePrev.current
 
     // Coyote time and jump buffering: the two things that make a jump feel fair
     // rather than mistimed. You can jump just after stepping off, and a press
@@ -150,8 +151,11 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     }
     spacePrev.current = spaceNow
 
-    // Release early and the rise is cut short — hold the key for height.
-    if (!spaceNow && vy.current > 0) vy.current *= Math.pow(CUT, dt * 60)
+    // Release early and the rise is cut short — but only on the frame the key
+    // actually goes up. Applying this every airborne frame compounded it into
+    // near-zero within about four frames, so a tap barely left the ground and
+    // there was never enough air time to reach the second jump.
+    if (released && vy.current > 0) vy.current *= CUT
 
     const fallSpeed = vy.current
     vy.current -= (vy.current > 0 ? GRAV_UP : GRAV_DOWN) * dt
@@ -208,6 +212,23 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     if (moving && grounded.current) {
       step.current += dt * (0.9 + vel.current.length() * 0.12)
       if (step.current > 0.34) { step.current = 0; try { footstep() } catch {} }
+    }
+
+    // The clone: snaps in solid under your feet, then thins out and sinks as you
+    // leave it behind. This is what the second jump pushes off.
+    if (clone.current) {
+      if (cloneT.current >= 1) {
+        clone.current.visible = false
+      } else {
+        cloneT.current = Math.min(cloneT.current + dt * 2.4, 1)
+        const k = cloneT.current
+        clone.current.visible = true
+        clone.current.position.set(clonePos.current.x, clonePos.current.y - k * 0.9, clonePos.current.z)
+        clone.current.rotation.y = facing.current
+        clone.current.scale.setScalar(0.92 + k * 0.3)
+        const fade = (1 - k) * 0.6
+        clone.current.traverse((o) => { if (o.isMesh) o.material.opacity = fade })
+      }
     }
 
     for (let i = 0; i < DUST_COUNT; i++) {
