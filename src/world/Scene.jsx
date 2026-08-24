@@ -10,7 +10,8 @@ import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
 import LightBudget from './LightBudget'
 import LanternField from './LanternField'
-import FoxPresence from './FoxPresence'
+import Kurama from './Kurama'
+import Finale from './Finale'
 import Villager from './Villager'
 import Crates from './Crates'
 
@@ -136,7 +137,7 @@ function ProjectSpot({ x, z, color }) {
   )
 }
 
-export default function Scene({ lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {} }) {
+export default function Scene({ sealBroken = false, freed = false, lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {} }) {
   const litCount = lit?.size || 0
   return (
     <>
@@ -188,7 +189,8 @@ export default function Scene({ lit, found, rungAt = 0, raining = false, playerR
 
       {villagers.map((v) => <Villager key={v.id} kind={v.kind} anchor={[v.x, v.z]} radius={v.r} />)}
 
-      <FoxPresence lit={litCount} litIds={lit} playerRef={playerRef} />
+      <Kurama lit={litCount} playerRef={playerRef} freed={freed} />
+      <Finale active={sealBroken} />
 
       <Atmosphere raining={raining} />
 

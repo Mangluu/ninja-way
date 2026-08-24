@@ -342,3 +342,54 @@ export function startBreathing() {
 
   breathing = { gain, subGain }
 }
+
+// The seal breaking: a downward sweep under a wall of noise. Low enough that
+// small speakers feel it as pressure rather than hear it as a tone.
+export function foxRoar() {
+  const ctx = initAudio(); if (!ctx) return
+  const t = ctx.currentTime
+  const bus = ctx.createGain()
+  bus.gain.setValueAtTime(0.0001, t)
+  bus.gain.exponentialRampToValueAtTime(0.9, t + 0.18)
+  bus.gain.exponentialRampToValueAtTime(0.0001, t + 3.4)
+  bus.connect(out())
+
+  const growl = ctx.createOscillator()
+  growl.type = 'sawtooth'
+  growl.frequency.setValueAtTime(150, t)
+  growl.frequency.exponentialRampToValueAtTime(38, t + 2.6)
+  const lp = ctx.createBiquadFilter()
+  lp.type = 'lowpass'; lp.frequency.setValueAtTime(1800, t)
+  lp.frequency.exponentialRampToValueAtTime(220, t + 3.0)
+  growl.connect(lp).connect(bus)
+
+  // breath over the top so it is an animal, not a synth
+  const n = ctx.createBufferSource()
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 3.5, ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length)
+  n.buffer = buf
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'; bp.frequency.setValueAtTime(900, t)
+  bp.frequency.exponentialRampToValueAtTime(180, t + 2.8); bp.Q.value = 0.7
+  const ng = ctx.createGain(); ng.gain.value = 0.35
+  n.connect(bp).connect(ng).connect(bus)
+
+  growl.start(t); growl.stop(t + 3.5); n.start(t); n.stop(t + 3.5)
+}
+
+// One gate catching fire. Called seven times, a beat apart.
+export function gateCatch(i = 0) {
+  const ctx = initAudio(); if (!ctx) return
+  const t = ctx.currentTime
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.exponentialRampToValueAtTime(0.32, t + 0.02)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7)
+  g.connect(out())
+  const o = ctx.createOscillator()
+  o.type = 'triangle'
+  o.frequency.setValueAtTime(220 * Math.pow(2, i / 12), t)
+  o.frequency.exponentialRampToValueAtTime(660 * Math.pow(2, i / 12), t + 0.5)
+  o.connect(g); o.start(t); o.stop(t + 0.75)
+}

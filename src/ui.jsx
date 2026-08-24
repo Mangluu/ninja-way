@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { profile } from './data/content'
 
 export function Intro({ onEnter }) {
@@ -99,6 +100,43 @@ export function SpeechPanel({ talk, onClose }) {
         <button className="speech-close" onClick={onClose}>
           walk on <span className="key">Esc</span>
         </button>
+      </div>
+    </div>
+  )
+}
+
+// The beat where the sixth gate catches. A wash of light, not a cut.
+export function Flash() {
+  return <div className="seal-flash" aria-hidden />
+}
+
+// Everything the world has been building toward, stated plainly and then got
+// out of the way of.
+export function TitleCard({ on, onPhoto, onClose }) {
+  // It has to let go on its own. Handing someone a cloak and a third jump and
+  // then leaving a card over the screen is a worse ending than no card.
+  useEffect(() => {
+    if (!on) return
+    const t = setTimeout(onClose, 11000)
+    const k = () => onClose()
+    window.addEventListener('keydown', k)
+    return () => { clearTimeout(t); window.removeEventListener('keydown', k) }
+  }, [on, onClose])
+  if (!on) return null
+  return (
+    <div className="title-card" role="status">
+      <div className="title-card-inner">
+        <p className="tc-kicker">The seal is broken</p>
+        <h1 className="tc-name">Shivang Gupta</h1>
+        <p className="tc-rank">Kage</p>
+        <p className="tc-note">
+          The village is lit. The fox walks with you now. Sprint is faster, the air holds you
+          three times, and nothing here is closed to you.
+        </p>
+        <div className="tc-actions">
+          <button className="tc-btn" onClick={onPhoto}>Take a photo ⌗</button>
+          <button className="tc-btn tc-ghost" onClick={onClose}>Keep walking →</button>
+        </div>
       </div>
     </div>
   )

@@ -117,6 +117,7 @@ export const RANKS = [
   { at: 1, name: 'Genin', note: 'The plate is fitted to the band.' },
   { at: 3, name: 'Chūnin', note: 'Hood down. He stopped hiding.' },
   { at: 5, name: 'Jōnin', note: 'Orange. He is not asking permission.' },
+  { at: 6, name: 'Kage', note: 'The seal is broken. Nothing here is closed to him.' },
 ]
 
 export function rankFor(lit) {

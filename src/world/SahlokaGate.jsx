@@ -10,6 +10,7 @@ function Gold({ intensity = 1.4, color = C.gold }) {
 }
 
 const TOP = 4.5
+const _wp = new THREE.Vector3()
 
 // The grand glowing gate itself (custom so it can emit light / bloom).
 function GrandGate() {
@@ -17,8 +18,18 @@ function GrandGate() {
   const floats = useRef([])
   useFrame((s, dt) => {
     const t = s.clock.elapsedTime
-    if (portal.current) { const k = 1 + Math.sin(t * 1.4) * 0.05; portal.current.scale.set(k, k, k); portal.current.material.opacity = 0.7 + Math.sin(t * 2.1) * 0.14 }
-    if (glow.current) { const g = 1 + Math.sin(t * 1.1) * 0.09; glow.current.scale.set(g, g, 1); glow.current.material.opacity = 0.34 + Math.sin(t * 1.6) * 0.08 }
+    if (portal.current) { const k = 1 + Math.sin(t * 1.4) * 0.05; portal.current.scale.set(k, k, k); portal.current.material.opacity = (0.7 + Math.sin(t * 2.1) * 0.14) * THREE.MathUtils.smoothstep(portal.current.getWorldPosition(_wp).distanceTo(s.camera.position), 3, 9) }
+    // These additive planes are big enough to fill the screen if the camera gets
+    // close, which it now does — you can walk right up the hill. Fade them out
+    // by camera distance so approaching the summit never whites out the view.
+    const near = (m, full, from, to) => {
+      if (!m) return
+      const d = m.getWorldPosition(_wp).distanceTo(s.camera.position)
+      m.material.opacity = full * THREE.MathUtils.smoothstep(d, from, to)
+    }
+    if (glow.current) { const g = 1 + Math.sin(t * 1.1) * 0.09; glow.current.scale.set(g, g, 1) }
+    near(glow.current, 0.34 + Math.sin(t * 1.6) * 0.08, 6, 22)
+    near(beam.current, 0.22, 10, 34)
     if (ring1.current) ring1.current.rotation.z += dt * 0.5
     if (ring2.current) ring2.current.rotation.z -= dt * 0.32
     if (ring3.current) { ring3.current.rotation.x += dt * 0.4; ring3.current.rotation.y += dt * 0.25 }

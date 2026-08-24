@@ -7,6 +7,7 @@ import { groundHeight } from './layout'
 import { footstep, doubleJump } from '../sound.js'
 
 const SPEED = 6, SPRINT = 10, CHAR_R = 0.45
+const EMBER_COUNT = 18
 const JUMP = 8.0
 const GRAV_UP = 18          // lighter going up…
 const GRAV_DOWN = 30        // …heavier coming down: the classic platformer arc
@@ -20,7 +21,7 @@ const TAU = Math.PI * 2
 
 const shortAngle = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d }
 
-export default function Controller({ spawn = [0, 0, -2], blockers = [], interactables = [], onProximity, playerRef, lit = 0 }) {
+export default function Controller({ freed = false, spawn = [0, 0, -2], blockers = [], interactables = [], onProximity, playerRef, lit = 0 }) {
   const rig = useRef()        // world position + facing
   const flipRig = useRef()    // somersault, *inside* facing so the axis is always "forward"
   const squash = useRef()     // landing squash / take-off stretch
@@ -60,6 +61,13 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
   const cloneT = useRef(1)
   const clonePos = useRef(new THREE.Vector3())
 
+  // Ember trail, cloak state only. The dust rings lie flat on the ground for
+  // footfalls; embers need to lift and drift, so they are their own thing.
+  const embers = useRef([])
+  const emberState = useRef(Array.from({ length: EMBER_COUNT }, () => ({ t: 1, x: 0, y: 0, z: 0, vx: 0, vz: 0 })))
+  const emberNext = useRef(0)
+  const emberGap = useRef(0)
+
   const dust = useRef([])
   const dustState = useRef(Array.from({ length: DUST_COUNT }, () => ({ t: 1, x: 0, y: 0, z: 0 })))
   const dustNext = useRef(0)
@@ -96,7 +104,8 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     const dz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
     const dx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
     const sprinting = k.ShiftLeft || k.ShiftRight
-    const maxSpeed = sprinting ? SPRINT : SPEED
+    // cloak state: quicker on foot and one extra jump in the air
+    const maxSpeed = (sprinting ? SPRINT : SPEED) * (freed ? 1.38 : 1)
 
     const fwd = new THREE.Vector3(Math.sin(yaw.current), 0, Math.cos(yaw.current))
     const right = new THREE.Vector3(-Math.cos(yaw.current), 0, Math.sin(yaw.current))
@@ -136,9 +145,9 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
       buffered.current = 0
       coyote.current = 0
       squashT.current = 0
-    } else if (pressed && !grounded.current && jumps.current === 1) {
-      vy.current = JUMP * 0.92
-      jumps.current = 2
+    } else if (pressed && !grounded.current && jumps.current <= (freed ? 2 : 1)) {
+      vy.current = JUMP * (jumps.current === 1 ? 0.92 : 0.80)
+      jumps.current += 1
       flip.current = 0
       cloneT.current = 0
       clonePos.current.set(np.x, charY.current - 0.15, np.z)
@@ -174,13 +183,15 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
         dustNext.current++
       }
       try { footstep() } catch {}
-      flip.current = 1          // never land mid-somersault
+      // let the flip finish if it is most of the way round; only snap upright
+      // when it has barely begun, so you never land mid-rotation looking broken
+      if (flip.current < 0.55) flip.current = 1
     }
     wasGrounded.current = grounded.current
 
     // ── pose ──────────────────────────────────────────────────────────────────
     if (moving) facing.current += shortAngle(facing.current, Math.atan2(move.x, move.z)) * (1 - Math.exp(-10 * dt))
-    if (flip.current < 1) flip.current = Math.min(1, flip.current + dt * 2.4)
+    if (flip.current < 1) flip.current = Math.min(1, flip.current + dt * 1.7)
     if (squashT.current < 1) squashT.current = Math.min(1, squashT.current + dt * 5)
 
     if (rig.current) {
@@ -193,7 +204,9 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
     // flip axis changed with your last direction of travel.
     // a short tuck as he pushes off the clone, rather than a full roll
     if (flipRig.current) {
-      flipRig.current.rotation.x = flip.current < 1 ? Math.sin(flip.current * Math.PI) * 0.55 : 0
+      // a full backward rotation. The previous version eased to 0.55 rad — a
+      // 32-degree nod that read as nothing at all.
+      flipRig.current.rotation.x = flip.current < 1 ? -flip.current * TAU : 0
     }
     if (squash.current && !reduced) {
       const s = 1 - Math.sin(squashT.current * Math.PI) * 0.16
@@ -241,6 +254,34 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
       const k2 = 0.5 + s.t * 2.6
       m.scale.set(k2, k2, k2)
       m.material.opacity = (1 - s.t) * 0.45
+    }
+
+    // ── ember trail ───────────────────────────────────────────────────────────
+    if (freed) {
+      emberGap.current -= dt
+      if (emberGap.current <= 0 && (dx !== 0 || dz !== 0 || !grounded.current)) {
+        emberGap.current = 0.04
+        const e = emberState.current[emberNext.current % EMBER_COUNT]
+        e.t = 0
+        e.x = np.x + (Math.random() - 0.5) * 0.45
+        e.y = charY.current + 0.3 + Math.random() * 0.55
+        e.z = np.z + (Math.random() - 0.5) * 0.45
+        e.vx = (Math.random() - 0.5) * 0.6
+        e.vz = (Math.random() - 0.5) * 0.6
+        emberNext.current++
+      }
+    }
+    for (let i = 0; i < EMBER_COUNT; i++) {
+      const e = emberState.current[i], m = embers.current[i]
+      if (!m) continue
+      if (e.t >= 1) { m.visible = false; continue }
+      e.t = Math.min(e.t + dt * 0.85, 1)
+      e.x += e.vx * dt; e.z += e.vz * dt; e.y += dt * 1.15
+      m.visible = true
+      m.position.set(e.x, e.y, e.z)
+      const k3 = (1 - e.t) * 0.13 + 0.02
+      m.scale.setScalar(k3)
+      m.material.opacity = Math.sin((1 - e.t) * Math.PI * 0.85) * 0.9
     }
 
     // ── camera ────────────────────────────────────────────────────────────────
@@ -300,6 +341,13 @@ export default function Controller({ spawn = [0, 0, -2], blockers = [], interact
       </group>
 
       <group>
+        {Array.from({ length: EMBER_COUNT }).map((_, i) => (
+          <mesh key={`e${i}`} ref={(el) => (embers.current[i] = el)} visible={false}>
+            <sphereGeometry args={[1, 6, 6]} />
+            <meshBasicMaterial color={C.orangeLite} transparent opacity={0} depthWrite={false}
+              blending={THREE.AdditiveBlending} toneMapped={false} />
+          </mesh>
+        ))}
         {Array.from({ length: DUST_COUNT }).map((_, i) => (
           <mesh key={i} ref={(el) => (dust.current[i] = el)} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
             <ringGeometry args={[0.5, 0.72, 24]} />

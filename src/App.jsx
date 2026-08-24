@@ -5,16 +5,16 @@ import * as THREE from 'three'
 import Scene from './world/Scene'
 import Controller from './world/Controller'
 import Effects from './effects'
-import { Intro, Hud, Prompt, Fade, ScrollPanel, SpeechPanel } from './ui'
+import { Intro, Hud, Prompt, Fade, ScrollPanel, SpeechPanel, TitleCard, Flash } from './ui'
 import { projects, SAHLOKA, ENV, rankFor, VILLAGER_LINES, senseiProgress } from './data/content'
 import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura, villagers } from './world/layout'
-import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing } from './sound.js'
+import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing, foxRoar, gateCatch } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
 import './styles.css'
 
 // The score follows the climb: quiet in the village, full arrangement at the gate.
 // Lighting lanterns lifts it too, so the world answers what you do.
-function MusicDirector({ lit, total }) {
+function MusicDirector({ lit, total, freed }) {
   const { camera } = useThree()
   const tick = useRef(0)
   useFrame(() => {
@@ -22,7 +22,9 @@ function MusicDirector({ lit, total }) {
     const d = Math.hypot(camera.position.x - SAHLOKA.x, camera.position.z - SAHLOKA.z)
     const climb = THREE.MathUtils.clamp(1 - (d - 14) / 62, 0, 1)   // 0 at the gate mouth, 1 at the summit
     const warmth = total ? (lit / total) * 0.3 : 0
-    setMusicIntensity(Math.min(1, climb + warmth))
+    // once the seal breaks the score goes to the full arrangement wherever you
+    // are standing — taiko and gong should not depend on your distance to a hill
+    setMusicIntensity(freed ? 1 : Math.min(1, climb + warmth))
   })
   return null
 }
@@ -49,6 +51,9 @@ export default function App() {
   const [shaken, setShaken] = useState({})
   const [reading, setReading] = useState(null)
   const [talking, setTalking] = useState(null)
+  const [sealBroken, setSealBroken] = useState(false)   // the sequence is running
+  const [freed, setFreed] = useState(false)             // cloak, triple jump, companion
+  const [crowned, setCrowned] = useState(false)         // title card
   const heard = useRef({})
   const toastTimer = useRef()
   const playerRef = useRef({ x: 0, y: 0, z: -2, speed: 0 })
@@ -111,6 +116,15 @@ export default function App() {
             try { bellRing() } catch {}
             setRungAt(performance.now())
           }, 2200)
+          // The sixth. Everything holds for a beat, then the fire takes the
+          // avenue gate by gate and does not stop at the hill.
+          if (n.size === 6) {
+            setSealBroken(true)
+            for (let i = 0; i < 7; i++) setTimeout(() => { try { gateCatch(i) } catch {} }, 1100 + i * 260)
+            setTimeout(() => { try { foxRoar() } catch {} }, 2700)
+            setTimeout(() => setFreed(true), 4000)
+            setTimeout(() => setCrowned(true), 7400)
+          }
           return n
         })
         try { lightUp() } catch {}
@@ -193,18 +207,18 @@ export default function App() {
         <color attach="background" args={[ENV.skyBottom]} />
         <fog attach="fog" args={[ENV.fog, 22, 135]} />
         <DevHook />
-        <MusicDirector lit={lit.size} total={pathLanterns.length} />
+        <MusicDirector lit={lit.size} total={pathLanterns.length}  freed={sealBroken} />
         {/* drops resolution instead of dropping frames on weaker GPUs */}
         <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>
-          <Scene lit={lit} found={found} rungAt={rungAt} raining={raining} playerRef={playerRef} taikoAt={taikoAt} shaken={shaken} />
-          <Controller spawn={[0, 0, -2]} blockers={allBlockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} lit={lit.size} />
+          <Scene sealBroken={sealBroken} freed={freed} lit={lit} found={found} rungAt={rungAt} raining={raining} playerRef={playerRef} taikoAt={taikoAt} shaken={shaken} />
+          <Controller spawn={[0, 0, -2]} blockers={allBlockers} interactables={interactables} onProximity={setNear} playerRef={playerRef} lit={lit.size} freed={freed} />
           <Effects />
         </Suspense>
       </Canvas>
 
       {!entered && <Intro onEnter={enter} />}
-      {entered && !photo && (
+      {entered && !photo && !crowned && (
         <Hud
           muted={muted} onToggleMute={toggleMute}
           lit={lit.size} lanterns={totals.lanterns} rank={rankFor(lit.size)}
@@ -212,11 +226,13 @@ export default function App() {
           raining={raining}
         />
       )}
-      {entered && !photo && <Prompt near={near} onAct={act} />}
+      {entered && !photo && !crowned && <Prompt near={near} onAct={act} />}
       <ScrollPanel scroll={reading} onClose={() => setReading(null)} />
       <SpeechPanel talk={talking} onClose={() => setTalking(null)} />
       {entered && photo && <div className="photo-hint">photo mode · <b>P</b> or <b>Esc</b> to exit</div>}
       {toast && !photo && <div className="toast">{toast}</div>}
+      {sealBroken && <Flash />}
+      <TitleCard on={crowned && !photo} onPhoto={() => { setPhoto(true); setCrowned(false) }} onClose={() => setCrowned(false)} />
       <Fade on={leaving} />
     </>
   )
