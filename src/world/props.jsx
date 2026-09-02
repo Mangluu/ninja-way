@@ -250,3 +250,31 @@ export function Taiko({ position = [0, 0, 0], hitAt = 0 }) {
     </group>
   )
 }
+
+// ── A rice ball on a plate. Picked up by hand, fed to the fox ────────────────
+export function Onigiri({ position = [0, 0, 0], found = false }) {
+  const g = useRef()
+  useFrame((s) => {
+    if (!g.current) return
+    const t = s.clock.elapsedTime
+    g.current.position.y = 0.34 + Math.sin(t * 1.8 + position[2]) * 0.04
+    g.current.rotation.y = t * 0.7
+  })
+  if (found) return null
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.03, 0]} receiveShadow><cylinderGeometry args={[0.42, 0.46, 0.06, 16]} /><Toon color={C.washi} /></mesh>
+      <group ref={g} position={[0, 0.34, 0]}>
+        <mesh rotation={[0, Math.PI / 6, 0]} scale={[1, 1, 0.62]} castShadow>
+          <coneGeometry args={[0.3, 0.42, 3]} />
+          <Toon color="#fbf7ee" emissive={C.goldLite} emissiveIntensity={0.18} />
+        </mesh>
+        <mesh position={[0, -0.12, 0.1]} rotation={[0, Math.PI / 6, 0]} scale={[1.02, 1, 0.64]}>
+          <coneGeometry args={[0.31, 0.16, 3]} />
+          <Toon color={C.sumi} />
+        </mesh>
+      </group>
+      <pointLight position={[0, 0.6, 0]} color={C.goldLite} intensity={0.6} distance={3} decay={2} />
+    </group>
+  )
+}

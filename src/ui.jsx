@@ -26,7 +26,7 @@ export function Intro({ onEnter, onJournal, touch }) {
   )
 }
 
-export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scrolls = 0, raining = false, rank, pct = 0, onJournal, touch, compass, aimLabel }) {
+export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scrolls = 0, raining = false, rank, pct = 0, rice = 0, onJournal, touch, compass, aimLabel }) {
   return (
     <>
       <div className="chip">
@@ -37,6 +37,7 @@ export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scr
         {rank && <span className="rank" title={rank.note}>{rank.name}</span>}
         <span className={lit === lanterns ? 'done' : ''}>🏮 {lit}/{lanterns}</span>
         <span className={found === scrolls ? 'done' : ''}>📜 {found}/{scrolls}</span>
+        {rice > 0 && <span className="done">🍙 {rice}</span>}
         <span className={pct === 100 ? 'done' : ''}>⛩ {pct}%</span>
         {raining && <span className="rain-on">🌧 raining</span>}
       </button>
@@ -135,7 +136,7 @@ export function TitleCard({ on, onPhoto, onClose }) {
         <h1 className="tc-name">Shivang Gupta</h1>
         <p className="tc-rank">Kage</p>
         <p className="tc-note">
-          The village is lit. The fox walks with you now. Sprint is faster, the air holds you
+          The village is lit. The fox at your side burns bright. Sprint is faster, the air holds you
           three times, and nothing here is closed to you.
         </p>
         <div className="tc-actions">

@@ -4,18 +4,19 @@
 // ponytail: one-metre cells, eight-way moves, string-pulled afterwards. No
 // dynamic obstacles (crates are pushed, villagers drift out of the way).
 
+import { bound, inside } from './collide'
+
 export function buildNav(blockers, world, cell = 1) {
   const w = Math.ceil((world.maxX - world.minX) / cell) + 1
   const h = Math.ceil((world.maxZ - world.minZ) / cell) + 1
   const solid = new Uint8Array(w * h)
   const PAD = 0.55   // half the character, so paths keep their shoulders clear
   for (const b of blockers) {
-    const r = b.r + PAD, r2 = r * r
+    const r = bound(b) + PAD
     const x0 = Math.max(0, Math.floor((b.x - r - world.minX) / cell)), x1 = Math.min(w - 1, Math.ceil((b.x + r - world.minX) / cell))
     const z0 = Math.max(0, Math.floor((b.z - r - world.minZ) / cell)), z1 = Math.min(h - 1, Math.ceil((b.z + r - world.minZ) / cell))
     for (let gz = z0; gz <= z1; gz++) for (let gx = x0; gx <= x1; gx++) {
-      const dx = world.minX + gx * cell - b.x, dz = world.minZ + gz * cell - b.z
-      if (dx * dx + dz * dz <= r2) solid[gz * w + gx] = 1
+      if (inside(world.minX + gx * cell, world.minZ + gz * cell, b, PAD)) solid[gz * w + gx] = 1
     }
   }
   return { w, h, cell, solid, minX: world.minX, minZ: world.minZ }

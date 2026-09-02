@@ -438,3 +438,43 @@ export function shing() {
     o.connect(og).connect(out()); o.start(t); o.stop(t + 0.25)
   })
 }
+
+// The fox, pleased: a soft two-note chirp with a little warble on the second
+// note, and a breath under it.
+export function purr() {
+  const c = initAudio(), t = c.currentTime
+  const bus = c.createGain(); bus.gain.value = 0.9
+  wetDry(bus, 0.25)
+  ;[[820, 0, 0.13], [1180, 0.11, 0.22]].forEach(([f, at, len], i) => {
+    const o = c.createOscillator(); o.type = 'sine'
+    o.frequency.setValueAtTime(f, t + at)
+    o.frequency.exponentialRampToValueAtTime(f * (i ? 1.12 : 1.05), t + at + len)
+    if (i) { const v = c.createOscillator(); v.frequency.value = 9; const vg = c.createGain(); vg.gain.value = 18; v.connect(vg).connect(o.detune); v.start(t + at); v.stop(t + at + len + 0.1) }
+    const g = c.createGain(); env(g, t + at, 0.012, len, 0.14)
+    o.connect(g).connect(bus); o.start(t + at); o.stop(t + at + len + 0.1)
+  })
+  const n = c.createBufferSource()
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * 0.3), c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.sin((i / d.length) * Math.PI)
+  n.buffer = buf
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1600; bp.Q.value = 1.5
+  const ng = c.createGain(); ng.gain.value = 0.03
+  n.connect(bp).connect(ng).connect(bus); n.start(t)
+}
+
+// Eating: three quick soft crunches, each a touch lower than the last.
+export function munch() {
+  const c = initAudio(), t0 = c.currentTime
+  for (let k = 0; k < 3; k++) {
+    const t = t0 + k * 0.13
+    const n = c.createBufferSource()
+    const buf = c.createBuffer(1, Math.floor(c.sampleRate * 0.07), c.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.2)
+    n.buffer = buf
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400 - k * 180; bp.Q.value = 1.1
+    const g = c.createGain(); env(g, t, 0.003, 0.06, 0.18)
+    n.connect(bp).connect(g).connect(out()); n.start(t)
+  }
+}

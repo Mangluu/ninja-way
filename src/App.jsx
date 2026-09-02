@@ -8,9 +8,9 @@ import Shuriken, { THROW_RANGE } from './world/Shuriken'
 import Effects from './effects'
 import { Intro, Hud, Prompt, Fade, TitleCard, Flash, Journal, ScrollCard, TouchControls } from './ui'
 import { projects, SAHLOKA, ENV, WORLD, rankFor, VILLAGER_LINES, senseiProgress, QUESTS, questProgress, completion } from './data/content'
-import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura, villagers, targets, crateStacks, HILL } from './world/layout'
+import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura, villagers, targets, crateStacks, onigiri, petSpawn, HILL } from './world/layout'
 import { buildNav } from './world/nav'
-import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing, foxRoar, gateCatch, crateHit } from './sound.js'
+import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing, foxRoar, gateCatch, crateHit, purr, munch } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
 import { loadSave, persistSave, clearSave } from './save.js'
 import './styles.css'
@@ -105,9 +105,14 @@ export default function App() {
   const anim = useRef({ moving: false, speed: 0, sprinting: false, airborne: false, vy: 0, landedAt: 0, oneShot: null, oneShotAt: 0, justJumped: false })
   const shuriken = useRef(null)
   const cratesApi = useRef(null)
+  const petApi = useRef(null)
+  // the fox is an interactable that moves: one object, its x/z kept current by the pet itself
+  const petItem = useMemo(() => ({ id: 'pet', type: 'pet', name: 'Kurama', tag: 'A FOX KIT', x: petSpawn.x, z: petSpawn.z, r: 2.7 }), [])
   const compass = useRef({ arrow: null, label: null })
   const aimLabel = useRef(null)
   const lit = save.lit, found = save.found
+  const inventory = save.food.size - save.fed.size   // rice balls in hand
+  const befriended = save.done.has('pet')
 
   const mark = useCallback((key, id) => setSave((s) => {
     if (s[key].has(id)) return s
@@ -115,7 +120,7 @@ export default function App() {
   }), [])
   useEffect(() => { persistSave(save) }, [save])
   // dev-only: the offscreen test loop drives the game through these
-  useEffect(() => { if (import.meta.env.DEV) window.__game = { anim, input, shuriken, playerRef, cratesApi, saveRef } }, [])
+  useEffect(() => { if (import.meta.env.DEV) window.__game = { anim, input, shuriken, playerRef, cratesApi, petApi, petItem, saveRef } }, [])
   useEffect(() => { document.body.classList.toggle('touch', touch) }, [touch])
 
   // project pedestals are solid too
@@ -161,6 +166,11 @@ export default function App() {
       cta: 'Throw a shuriken', x: t.x, z: t.z, r: 3.2,
     })),
     ...crateStacks.map((c, i) => ({ id: `crate-${i}`, type: 'crate', name: 'Crate stack', x: c.x, z: c.z, r: 0 })),
+    ...onigiri.filter((o) => !save.food.has(o.id)).map((o) => ({
+      id: o.id, type: 'food', name: 'A rice ball', tag: 'SOMEONE LEFT THIS OUT',
+      blurb: 'Still warm, wrapped in nori, sat on a plate. Not for you.', cta: 'Pick it up', x: o.x, z: o.z, r: 2.4,
+    })),
+    petItem,
     ...villagers.map((v) => ({
       id: v.id, type: 'villager', kind: v.kind, name: v.name, tag: 'SOMEONE HERE',
       blurb: v.kind === 'sensei' ? 'Reading. Or pretending to.' : 'Looks like they have something to say.',
@@ -175,7 +185,7 @@ export default function App() {
     { id: 'bell', type: 'bell', name: 'Shrine bell', tag: 'SUZU',
       blurb: 'Heavy, cold bronze. It wants to be struck.', cta: 'Ring it', x: bell.x, z: bell.z, r: 3.4 },
     { id: 'sahloka', type: 'sahloka', name: SAHLOKA.name, blurb: SAHLOKA.blurb, link: SAHLOKA.link, x: SAHLOKA.x, z: SAHLOKA.z, r: 18 },
-  ]), [lit, found, save.hit])
+  ]), [lit, found, save.hit, save.food, petItem])
   const throwables = useMemo(() => interactables.filter((i) => THROWABLE.has(i.type) && (i.type !== 'villager' || i.kind === 'rival')), [interactables])
 
   // What the compass can point at: everything not yet done, with a name.
@@ -191,8 +201,11 @@ export default function App() {
     if (!save.done.has('tree')) sakura.forEach((t) => o.push({ name: 'Cherry tree', x: t.x, z: t.z }))
     if (!save.done.has('crates')) crateStacks.forEach((c) => o.push({ name: 'Crate stack', x: c.x, z: c.z }))
     if (!save.done.has('summit')) o.push({ name: 'The summit', x: SAHLOKA.x, z: SAHLOKA.z })
+    if (!save.done.has('pet')) o.unshift({ name: 'A fox kit', x: petSpawn.x, z: petSpawn.z })
+    onigiri.forEach((r) => { if (!save.food.has(r.id)) o.push({ name: 'A rice ball', x: r.x, z: r.z }) })
+    if (save.food.size - save.fed.size > 0 && save.fed.size < 3) o.unshift(Object.assign(Object.create(petItem), { name: 'Kurama is hungry' }))
     return o
-  }, [save])
+  }, [save, petItem])
 
   const lightLantern = (item) => {
     const s = saveRef.current
@@ -279,6 +292,27 @@ export default function App() {
       case 'crate':
         if (!byHand && cratesApi.current) cratesApi.current.hit(item.x, item.z, 1)
         break
+      case 'food':
+        if (!byHand) break
+        reach('PickUp', 500, () => {
+          mark('food', item.id)
+          try { collect() } catch {}
+          const s2 = saveRef.current
+          note(`Rice ball · ${s2.food.size + (s2.food.has(item.id) ? 0 : 1) - s2.fed.size} in hand`)
+        })
+        break
+      case 'pet': {
+        if (!byHand) break
+        const s2 = saveRef.current
+        const next = [...s2.food].find((f) => !s2.fed.has(f))
+        if (next) {
+          // a fox that eats from your hand is your fox, whether or not you said hello first
+          reach('PickUp', 450, () => { mark('fed', next); mark('done', 'pet'); if (petApi.current) petApi.current.eat(); try { munch() } catch {} })
+        } else {
+          reach('PickUp', 420, () => { mark('done', 'pet'); if (petApi.current) petApi.current.pet(); try { purr() } catch {} })
+        }
+        break
+      }
       case 'sahloka':
         if (!byHand) break
         try { whoosh() } catch {}
@@ -305,6 +339,7 @@ export default function App() {
     const canThrow = THROWABLE.has(item.type) && (item.type !== 'villager' || item.kind === 'rival') && !known
     if (canThrow && dist <= THROW_RANGE && shuriken.current && shuriken.current.throwAt(item)) return
     if (item.type === 'crate') return
+    if (item.type === 'pet') { if (input.current.walkTo) input.current.walkTo(item.x, item.z, 1.8); return }
     if (input.current.walkTo) input.current.walkTo(item.x, item.z, item.type === 'sahloka' ? 7 : 1.7)
   }
 
@@ -376,6 +411,12 @@ export default function App() {
   const totals = { lanterns: pathLanterns.length, scrolls: scrolls.length }
   const hudOn = entered && !photo && !crowned
   const scrollsFound = scrolls.filter((s) => save.found.has(s.id))
+  // the fox's card depends on what you are carrying and whether you have met
+  const nearShown = near && near.type === 'pet' ? {
+    ...near,
+    blurb: befriended ? 'Your fox. It goes where you go now, and it has opinions about rice balls.' : 'A fox kit, sat by the gate as if it has been waiting for someone in particular.',
+    cta: inventory > 0 ? `Feed it a rice ball · ${inventory} left` : befriended ? 'Pet the fox' : 'Say hello',
+  } : near
 
   return (
     <>
@@ -395,6 +436,7 @@ export default function App() {
             sealBroken={sealBroken} freed={freed} lit={lit} found={found} rungAt={rungAt} raining={raining}
             playerRef={playerRef} taikoAt={taikoAt} shaken={shaken} hit={save.hit} struck={struck}
             onScatter={() => mark('done', 'crates')} cratesApi={cratesApi} bubbles={bubbles} rivalHitAt={rivalHitAt}
+            food={save.food} petApi={petApi} petItem={petItem} befriended={befriended}
           />
           <Controller
             spawn={[0, 0, -2]} blockers={allBlockers} camObstacles={camObstacles} interactables={interactables} nav={nav} state={anim}
@@ -412,11 +454,11 @@ export default function App() {
           muted={muted} onToggleMute={toggleMute}
           lit={lit.size} lanterns={totals.lanterns} rank={rankFor(lit.size)}
           found={found.size} scrolls={totals.scrolls}
-          raining={raining} pct={completion(save).pct}
+          raining={raining} pct={completion(save).pct} rice={inventory}
           onJournal={() => setJournal(true)} touch={touch} compass={compass} aimLabel={aimLabel}
         />
       )}
-      {hudOn && <Prompt near={near} onAct={act} />}
+      {hudOn && <Prompt near={nearShown} onAct={act} />}
       {hudOn && touch && (
         <TouchControls input={input} onThrow={() => shuriken.current && shuriken.current.throwForward()} onDash={() => { input.current.dash = true }} />
       )}

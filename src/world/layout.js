@@ -145,6 +145,18 @@ export const scrolls = [
   { id: 'scroll-4', x: -30, z: 108, note: 'Every gate you walk through was once a wall.' },
 ]
 
+// Rice balls on little plates, left out around the village. The fox knows.
+export const onigiri = [
+  { id: 'rice-0', x: 11.5, z: 23.5 },
+  { id: 'rice-1', x: -20, z: 36.5 },
+  { id: 'rice-2', x: -7.5, z: 47 },
+  { id: 'rice-3', x: 22, z: 81 },
+  { id: 'rice-4', x: 3, z: 102 },
+]
+
+// Where the fox kit sits until someone makes friends with it.
+export const petSpawn = { x: -3.6, z: -4.5 }
+
 // The shrine bell, with the shrine itself behind it.
 export const bell = { id: 'bell', x: -9, z: 50 }
 export const shrine = { x: -12, z: 52.5, rot: Math.PI / 2 + 0.35, s: 1.7 }
@@ -202,10 +214,11 @@ export const PICK = {
   taiko: [1.4, 2.3], tree: [1.7, 5.5], bell: [1.5, 3.0], target: [0.9, 2.1], crate: [1.3, 1.9], sahloka: [4.5, 12],
 }
 
-// Quaternius torii: posts stand about 2.3 units either side of centre.
+// Quaternius torii: the posts stand 1.57 units either side of centre at
+// scale 1, measured from the mesh.
 export function toriiPosts(x, z, scale) {
-  const half = 2.3 * scale
-  return [{ x: x - half, z, r: 0.42 * scale }, { x: x + half, z, r: 0.42 * scale }]
+  const half = 1.57 * scale
+  return [{ x: x - half, z, r: 0.32 * scale }, { x: x + half, z, r: 0.32 * scale }]
 }
 export const gateBlockers = [
   ...toriiPosts(0, entranceGate.z, entranceGate.s),
@@ -220,24 +233,41 @@ export const villagers = [
   { id: 'sensei', kind: 'sensei', name: 'The sensei', x: 11.5, z: 75.5, facing: -1.9 },
 ]
 
-// Everything solid the player can bump into. Built from the prop lists rather
-// than hand-maintained, so adding a tree or a lantern automatically adds its
-// collider. The hill and the bridge are terrain, handled by groundHeight.
-// Crates are absent: knocking those about is the point.
+// Everything solid the player can bump into: circles { x, z, r } and boxes
+// { x, z, hw, hd, rot }, sized from the meshes. Built from the prop lists
+// rather than hand-maintained, so adding a tree or a fence automatically adds
+// its collider. The hill and the bridge deck are terrain, handled by
+// groundHeight. Crates are absent: knocking those about is the point.
 export const blockers = [
-  ...houses.map((h) => ({ x: h.x, z: h.z, r: 2.6 })),
-  ...sakura.map((t) => ({ x: t.x, z: t.z, r: 0.16 * t.s })),
-  ...pines.map((t) => ({ x: t.x, z: t.z, r: 0.14 * t.s })),
+  ...houses.map((h) => ({ x: h.x, z: h.z, hw: 2.15, hd: 1.95, rot: h.rot })),
+  ...sakura.map((t) => ({ x: t.x, z: t.z, r: 0.14 * t.s })),
+  ...pines.map((t) => ({ x: t.x, z: t.z, r: 0.12 * t.s })),
   ...forest.filter((t) => Math.abs(t.x) < 34.5 || t.z < WORLD.minZ + 4 || t.z > 140).map((t) => ({ x: t.x, z: t.z, r: 0.2 * t.s })),
-  ...rocks.map((r) => ({ x: r.x, z: r.z, r: 0.2 * r.s })),
+  ...rocks.map((r) => ({ x: r.x, z: r.z, r: 0.45 * r.s })),
+  ...bushes.map((b) => ({ x: b.x, z: b.z, r: 0.25 * b.s })),
   ...pathLanterns.map((l) => ({ x: l.x, z: l.z, r: 0.42 })),
   ...hangingLanterns.map((l) => ({ x: l.x, z: l.z, r: 0.28 })),
   ...scrolls.map((s) => ({ x: s.x, z: s.z, r: 0.42 })),
-  ...fences.map((f) => ({ x: f.x, z: f.z, r: 0.9 })),
+  // Kenney fences run along the back edge of their tile, not through the middle
+  ...fences.map((f) => { const off = -0.465 * f.s; return { x: f.x + off * Math.sin(f.rot), z: f.z + off * Math.cos(f.rot), hw: 0.5 * f.s, hd: 0.1 * f.s, rot: f.rot } }),
   { x: bell.x, z: bell.z, r: 1.25 },
-  { x: shrine.x, z: shrine.z, r: 1.4 },
+  { x: shrine.x, z: shrine.z, r: 1.3 },
   { x: taiko.x, z: taiko.z, r: 1.2 },
-  { x: camp.x, z: camp.z, r: 1.1 },
-  { x: temple.x, z: temple.z, r: 5 },
+  // the camp: fire, pots, the log seat, the wood pile
+  { x: camp.x, z: camp.z, r: 1.0 },
+  { x: camp.x + 1.8, z: camp.z - 0.6, r: 0.75 },
+  { x: camp.x + 2.4, z: camp.z + 0.9, r: 0.5 },
+  { x: camp.x - 0.4, z: camp.z + 2.6, hw: 1.5, hd: 0.85, rot: 0.2 },
+  { x: camp.x + 3, z: camp.z + 2.2, r: 0.9 },
+  { x: temple.x, z: temple.z, r: 4.4 },
+  // the bridge rails; the deck between them is walkable
+  { x: bridge.x - 2.05, z: bridge.z, hw: 0.15, hd: 2.4, rot: 0 },
+  { x: bridge.x + 2.05, z: bridge.z, hw: 0.15, hd: 2.4, rot: 0 },
+  // the summit: the golden gate's posts and the plateau lanterns
+  { x: SAHLOKA.x - 3, z: SAHLOKA.z, r: 0.6 },
+  { x: SAHLOKA.x + 3, z: SAHLOKA.z, r: 0.6 },
+  ...[[-6, -4], [6, -4], [-6.5, 3], [6.5, 3]].map(([dx, dz]) => ({ x: SAHLOKA.x + dx, z: SAHLOKA.z + dz, r: 0.5 })),
   ...targets.map((t) => ({ x: t.x, z: t.z, r: 0.5 })),
+  // people are solid too
+  ...villagers.map((v) => ({ x: v.x, z: v.z, r: 0.7 })),
 ]

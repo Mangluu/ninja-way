@@ -5,6 +5,7 @@ import Ninja from './Ninja'
 import { WORLD, C } from '../data/content'
 import { groundHeight, PICK } from './layout'
 import { findPath } from './nav'
+import { resolve, bound } from './collide'
 import { footstep, doubleJump } from '../sound.js'
 
 const SPEED = 6, SPRINT = 10.5, CHAR_R = 0.45
@@ -42,7 +43,7 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
   const { camera, gl, raycaster } = useThree()
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
   // the camera steers around what would fill the screen: buildings and canopies
-  const camBlockers = useMemo(() => [...blockers.filter((b) => b.r >= 2), ...camObstacles], [blockers, camObstacles])
+  const camBlockers = useMemo(() => [...blockers.filter((b) => bound(b) >= 1.8), ...camObstacles], [blockers, camObstacles])
 
   const pos = useRef(new THREE.Vector3(spawn[0], 0, spawn[2]))
   const vel = useRef(new THREE.Vector3())
@@ -248,11 +249,8 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
     const np = pos.current.clone().addScaledVector(vel.current, dt)
     np.x = clamp(np.x, WORLD.minX, WORLD.maxX)
     np.z = clamp(np.z, WORLD.minZ, WORLD.maxZ)
-    for (const b of blockers) {
-      const ddx = np.x - b.x, ddz = np.z - b.z
-      const d = Math.hypot(ddx, ddz), min = b.r + CHAR_R
-      if (d < min && d > 1e-4) { const push = (min - d) / d; np.x += ddx * push; np.z += ddz * push }
-    }
+    // twice, so a corner between two things settles instead of jittering
+    resolve(np, blockers, CHAR_R); resolve(np, blockers, CHAR_R)
     pos.current.copy(np)
 
     // ── vertical ──────────────────────────────────────────────────────────────
@@ -410,11 +408,8 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
     let cx = np.x - Math.sin(yaw.current) * horiz
     let cz = np.z - Math.cos(yaw.current) * horiz
     let cy = charY.current + 1.5 + Math.sin(pitch.current) * dist.current
-    for (const b of camBlockers) {
-      const ddx = cx - b.x, ddz = cz - b.z
-      const d = Math.hypot(ddx, ddz), min = b.r + 0.8
-      if (d < min && d > 1e-4) { const push = (min - d) / d; cx += ddx * push; cz += ddz * push }
-    }
+    const cp = resolve({ x: cx, z: cz }, camBlockers, 0.8)
+    cx = cp.x; cz = cp.z
     cy = Math.max(cy, groundHeight(cx, cz) + 1.2)
     camPos.current.set(cx, cy, cz)
     camera.position.lerp(camPos.current, 1 - Math.exp(-8 * dt))
@@ -430,12 +425,17 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
       camera.position.z += (Math.random() - 0.5) * shake.current
     }
 
-    let near = null, best = Infinity
+    // nearest thing wins, except the pet, which is always underfoot and only
+    // gets the prompt when nothing else is in reach
+    let near = null, best = Infinity, pet = null
     for (const it of interactables) {
       if (!it.r) continue
       const d = Math.hypot(np.x - it.x, np.z - it.z)
-      if (d < it.r && d < best) { best = d; near = it }
+      if (d >= it.r) continue
+      if (it.type === 'pet') { pet = it; continue }
+      if (d < best) { best = d; near = it }
     }
+    if (!near) near = pet
     const id = near ? near.id : null
     if (id !== nearestId.current) { nearestId.current = id; onProximity && onProximity(near) }
   })

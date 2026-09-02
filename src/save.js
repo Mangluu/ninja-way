@@ -1,5 +1,5 @@
-// Progress lives in this browser. Six sets, stored as arrays. Nothing else.
-const KEYS = ['lit', 'found', 'seen', 'heard', 'hit', 'done']
+// Progress lives in this browser. Eight sets, stored as arrays. Nothing else.
+const KEYS = ['lit', 'found', 'seen', 'heard', 'hit', 'done', 'food', 'fed']
 const STORE = 'ninja-way:save:v1'
 
 export function loadSave() {

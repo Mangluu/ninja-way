@@ -160,6 +160,7 @@ export function senseiProgress(lit) {
 // Everything the village asks of a visitor, in one list. `key` names the set in
 // the save that tracks it; the one-offs share the `done` set and carry an `id`.
 export const QUESTS = [
+  { key: 'done', id: 'pet', name: 'Make a friend', hint: 'A fox kit waits by the entrance gate. Go and say hello.' },
   { key: 'seen',  name: 'Discover the six projects', total: 6, hint: 'Glowing orbs on stone plinths, either side of the path.' },
   { key: 'lit',   name: 'Light the six stone lanterns', total: 6, hint: 'Cold and grey along the path. Every one of them changes him.' },
   { key: 'found', name: 'Find the five hidden scrolls', total: 5, hint: 'Off the path, behind things, for people who wander.' },
@@ -169,6 +170,8 @@ export const QUESTS = [
   { key: 'done', id: 'taiko',  name: 'Strike the great drum', hint: 'In the square, past the ramen cook.' },
   { key: 'done', id: 'tree',   name: 'Shake blossom from a cherry tree', hint: 'Any of them will do.' },
   { key: 'done', id: 'crates', name: 'Knock over a crate stack', hint: 'Sprint straight through one.' },
+  { key: 'food',  name: 'Find the five rice balls', total: 5, hint: 'On little plates around the village. Someone keeps leaving them out.' },
+  { key: 'fed',   name: 'Feed the fox three times', total: 3, hint: 'It will follow you anywhere for a rice ball.' },
   { key: 'done', id: 'summit', name: 'Climb to the summit gate', hint: 'Up the torii avenue, at the far end.' },
 ]
 

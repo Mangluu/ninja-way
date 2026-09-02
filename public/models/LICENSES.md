@@ -12,3 +12,5 @@ Every model in this folder is licensed CC0 1.0 (public domain dedication). Credi
 | `arch.glb` → `shrine` | Shrine | [Poly Pizza](https://poly.pizza/m/tFxdxO5clk) | Kay Lousberg | CC0 |
 
 Characters were reduced to the animation clips the game uses, and all files were re-encoded with [glTF Transform](https://gltf-transform.dev/). Textures were shrunk to 256 px. Nothing else was changed.
+
+| `fox.glb` | The fox (the pet) | [Poly Pizza](https://poly.pizza/m/Bc97C66HKi), from the Animated Animal Pack | Quaternius | CC0 |

@@ -5,15 +5,15 @@ import * as THREE from 'three'
 import { C, ENV, WORLD, projects } from '../data/content'
 import { gradientMap } from '../lib/toon'
 import { groundMat, stone } from '../lib/materials'
-import { House, StoneLantern, LanternPost, Scroll, Bell, Taiko, FallenPetals } from './props'
+import { House, StoneLantern, LanternPost, Scroll, Bell, Taiko, FallenPetals, Onigiri } from './props'
 import { useNature, useArch, Prop, Instanced } from './props3d'
-import { houses, sakura, pines, forest, rocks, grass, flowers, bushes, mushrooms, fences, stream, bridge, lilies, camp, pathLanterns, hangingLanterns, scrolls, bell, shrine, crateStacks, taiko, villagers, targets, groundHeight } from './layout'
+import { houses, sakura, pines, forest, rocks, grass, flowers, bushes, mushrooms, fences, stream, bridge, lilies, camp, pathLanterns, hangingLanterns, scrolls, bell, shrine, crateStacks, taiko, villagers, targets, onigiri, groundHeight } from './layout'
 import { Target } from './Shuriken'
 import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
 import LightBudget from './LightBudget'
 import LanternField from './LanternField'
-import Kurama from './Kurama'
+import Pet from './Pet'
 import Finale from './Finale'
 import Villager from './Villager'
 import Crates from './Crates'
@@ -233,8 +233,7 @@ function FollowLight({ playerRef }) {
   )
 }
 
-export default function Scene({ sealBroken = false, freed = false, lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {}, hit, struck = {}, onScatter, cratesApi, bubbles = {}, rivalHitAt = 0 }) {
-  const litCount = lit?.size || 0
+export default function Scene({ sealBroken = false, freed = false, lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {}, hit, struck = {}, onScatter, cratesApi, bubbles = {}, rivalHitAt = 0, food, petApi, petItem, befriended = false }) {
   const nature = useNature()
   const arch = useArch()
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
@@ -287,6 +286,7 @@ export default function Scene({ sealBroken = false, freed = false, lit, found, r
       <Crates stacks={crateStacks} playerRef={playerRef} onScatter={onScatter} api={cratesApi} />
       <Taiko position={[taiko.x, groundHeight(taiko.x, taiko.z), taiko.z]} hitAt={taikoAt} />
       {targets.map((t) => <Target key={t.id} position={[t.x, groundHeight(t.x, t.z), t.z]} hit={!!hit?.has(t.id)} hitAt={struck[t.id] || 0} />)}
+      {onigiri.map((o) => <Onigiri key={o.id} position={[o.x, groundHeight(o.x, o.z), o.z]} found={!!food?.has(o.id)} />)}
 
       {/* discoverable projects */}
       {projects.map((p) => <ProjectSpot key={p.id} x={p.x} z={p.z} color={p.color} />)}
@@ -296,7 +296,7 @@ export default function Scene({ sealBroken = false, freed = false, lit, found, r
           say={bubbles[v.kind]} hitAt={v.kind === 'rival' ? rivalHitAt : 0} />
       ))}
 
-      <Kurama lit={litCount} playerRef={playerRef} freed={freed} />
+      <Pet playerRef={playerRef} api={petApi} item={petItem} befriended={befriended} freed={freed} />
       <Finale active={sealBroken} />
 
       <Atmosphere raining={raining} />

@@ -17,10 +17,11 @@ A shinobi village you can play, in the browser. Walk it, light the lanterns, thr
 | Quest log and dossier | `Q` or the 📖 button | the 📖 button |
 | Photo mode · rain · mute | `P` · `R` · `M` | |
 
-A compass at the top of the screen always points at the nearest thing left to do, and a marker floats over whatever a throw would hit. Villagers speak in bubbles over their heads, scrolls unroll at the edge of the screen, and the journal is a drawer, so nothing ever covers the world. Progress is saved in the browser. Someone in a hurry can open the dossier from the start screen and get the bio, the links and every project without walking anywhere.
+A compass at the top of the screen always points at the nearest thing left to do, and a marker floats over whatever a throw would hit. Houses, fences, rocks, people and gate posts are solid. Villagers speak in bubbles over their heads, scrolls unroll at the edge of the screen, and the journal is a drawer, so nothing ever covers the world. Progress is saved in the browser. Someone in a hurry can open the dossier from the start screen and get the bio, the links and every project without walking anywhere.
 
 ## What there is to do
 
+- A fox kit by the entrance gate. Say hello and it is yours: it follows you, hops when you pet it, and eats the rice balls you find around the village.
 - Six projects on glowing plinths. Walk up, read the card, open the link.
 - Six stone lanterns. Every one changes the character, from academy student to Kage. The sixth breaks a seal.
 - Five hidden scrolls, three villagers who talk about him, a shrine bell, a taiko drum, cherry trees to shake, crates to sprint through.
@@ -62,7 +63,7 @@ Ships to GitHub Pages via `.github/workflows/deploy.yml` on every push to `main`
 
 ## Credits
 
-The character and the villagers are the [KayKit Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg. The trees, rocks, meadow, fences, bridge and camp are from the [Kenney Nature Kit](https://kenney.nl/assets/nature-kit). The torii and temples are by Quaternius and the shrine by Kay Lousberg, both via [Poly Pizza](https://poly.pizza). All CC0. Details in `public/models/LICENSES.md`.
+The character and the villagers are the [KayKit Adventurers](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0) by Kay Lousberg. The trees, rocks, meadow, fences, bridge and camp are from the [Kenney Nature Kit](https://kenney.nl/assets/nature-kit). The fox, the torii and the temples are by Quaternius and the shrine by Kay Lousberg, all via [Poly Pizza](https://poly.pizza). All CC0. Details in `public/models/LICENSES.md`.
 
 The procedural texture engine — the runtime-generated wood, stone, plaster, roof
 tile, lacquer and paper that the houses and lanterns are drawn with — and the curved
