@@ -223,7 +223,7 @@ function FollowLight({ playerRef }) {
   return (
     <>
       <directionalLight
-        ref={light} intensity={0.85} color={ENV.sun} castShadow target={target}
+        ref={light} intensity={1.6} color={ENV.sun} castShadow target={target}
         shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.02}
         shadow-camera-near={1} shadow-camera-far={90}
         shadow-camera-left={-34} shadow-camera-right={34} shadow-camera-top={34} shadow-camera-bottom={-34}
@@ -233,7 +233,7 @@ function FollowLight({ playerRef }) {
   )
 }
 
-export default function Scene({ sealBroken = false, freed = false, lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {}, hit, struck = {}, onScatter, cratesApi, bubbles = {}, rivalHitAt = 0, food, petApi, petItem, befriended = false }) {
+export default function Scene({ sealBroken = false, freed = false, lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {}, hit, struck = {}, onScatter, cratesApi, bubbles = {}, rivalHitAt = 0, food, petApi, petItem, befriended = false, blockers = [], anim, onBond }) {
   const nature = useNature()
   const arch = useArch()
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
@@ -247,8 +247,8 @@ export default function Scene({ sealBroken = false, freed = false, lit, found, r
       <Petals count={reduced ? 40 : 200} />
 
       {/* lighting: a cool moon key, kept low so lantern light reads */}
-      <hemisphereLight args={[ENV.skyTop, ENV.ground, 0.32]} />
-      <ambientLight intensity={0.1} />
+      <hemisphereLight args={["#8fa6e6", ENV.ground, 0.95]} />
+      <ambientLight intensity={0.3} />
       <FollowLight playerRef={playerRef} />
 
       {/* ground + path */}
@@ -296,7 +296,7 @@ export default function Scene({ sealBroken = false, freed = false, lit, found, r
           say={bubbles[v.kind]} hitAt={v.kind === 'rival' ? rivalHitAt : 0} />
       ))}
 
-      <Pet playerRef={playerRef} api={petApi} item={petItem} befriended={befriended} freed={freed} />
+      <Pet playerRef={playerRef} api={petApi} item={petItem} befriended={befriended} freed={freed} blockers={blockers} state={anim} onBond={onBond} />
       <Finale active={sealBroken} />
 
       <Atmosphere raining={raining} />

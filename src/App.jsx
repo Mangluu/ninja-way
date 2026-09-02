@@ -10,7 +10,7 @@ import { Intro, Hud, Prompt, Fade, TitleCard, Flash, Journal, ScrollCard, TouchC
 import { projects, SAHLOKA, ENV, WORLD, rankFor, VILLAGER_LINES, senseiProgress, QUESTS, questProgress, completion } from './data/content'
 import { blockers, gateBlockers, pathLanterns, scrolls, bell, taiko, sakura, villagers, targets, crateStacks, onigiri, petSpawn, HILL } from './world/layout'
 import { buildNav } from './world/nav'
-import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing, foxRoar, gateCatch, crateHit, purr, munch } from './sound.js'
+import { initAudio, ping, cheer, whoosh, startAmbient, setMuted, lightUp, bellRing, collect, taikoHit, rustle, startBreathing, foxRoar, gateCatch, crateHit, purr, munch, whistle } from './sound.js'
 import { startMusic, setMusicIntensity } from './music.js'
 import { loadSave, persistSave, clearSave } from './save.js'
 import './styles.css'
@@ -118,6 +118,7 @@ export default function App() {
     if (s[key].has(id)) return s
     return { ...s, [key]: new Set(s[key]).add(id) }
   }), [])
+  const addBond = useCallback((sec) => setSave((s) => ({ ...s, bond: Math.min(600, (s.bond || 0) + sec) })), [])
   useEffect(() => { persistSave(save) }, [save])
   // dev-only: the offscreen test loop drives the game through these
   useEffect(() => { if (import.meta.env.DEV) window.__game = { anim, input, shuriken, playerRef, cratesApi, petApi, petItem, saveRef } }, [])
@@ -302,15 +303,19 @@ export default function App() {
         })
         break
       case 'pet': {
-        if (!byHand) break
+        // feeding: crouch, hold the rice ball out, and wait for it to come and eat
+        if (!byHand || !petApi.current) break
         const s2 = saveRef.current
         const next = [...s2.food].find((f) => !s2.fed.has(f))
-        if (next) {
-          // a fox that eats from your hand is your fox, whether or not you said hello first
-          reach('PickUp', 450, () => { mark('fed', next); mark('done', 'pet'); if (petApi.current) petApi.current.eat(); try { munch() } catch {} })
-        } else {
-          reach('PickUp', 420, () => { mark('done', 'pet'); if (petApi.current) petApi.current.pet(); try { purr() } catch {} })
-        }
+        if (!next) break
+        const a = anim.current
+        a.oneShot = 'PickUp'; a.oneShotAt = nowS(); a.hold = true; a.showRice = true
+        petApi.current.feed().then((ok) => {
+          a.hold = false; a.showRice = false
+          if (!ok) return
+          mark('fed', next); mark('done', 'pet')
+          try { munch() } catch {}
+        })
         break
       }
       case 'sahloka':
@@ -330,6 +335,24 @@ export default function App() {
     }
   }
   const act = () => { if (near && !anim.current.oneShot) perform(near, 'act') }
+
+  // Petting is a hold: crouch and stay down, the fox comes in, hearts and
+  // scratches for as long as you keep the key down.
+  const petStart = () => {
+    if (!near || near.type !== 'pet' || anim.current.oneShot || !petApi.current) return
+    if (inventory > 0) { perform(near, 'act'); return }
+    const a = anim.current
+    a.oneShot = 'PickUp'; a.oneShotAt = nowS(); a.hold = true
+    petApi.current.petStart()
+    mark('done', 'pet')
+  }
+  const petStop = () => {
+    const a = anim.current
+    if (!a.hold || a.showRice) return
+    a.hold = false
+    if (petApi.current) petApi.current.petStop()
+  }
+  const callFox = () => { if (befriended && petApi.current) { try { whistle() } catch {} ; petApi.current.come() } }
 
   // A tap on a thing: throw at it if a star can reach, otherwise walk over.
   // A project you have already found is walked to, so the card comes up.
@@ -395,7 +418,7 @@ export default function App() {
       if (e.code === 'Escape') { setPhoto(false); setJournal(false); setCard(null); return }
       if (e.code === 'KeyQ') { setJournal((q) => !q); return }
       if (journal) return
-      if (e.code === 'KeyE' || e.code === 'Enter') act()
+      if (e.code === 'KeyE' || e.code === 'Enter') { if (near && near.type === 'pet') petStart(); else if (near) act(); else callFox() }
       if (e.code === 'KeyF' && shuriken.current) shuriken.current.throwForward()
       if (e.code === 'KeyM') toggleMute()
       if (e.code === 'KeyP') setPhoto((p) => !p)
@@ -404,9 +427,11 @@ export default function App() {
       seq.push(e.code); if (seq.length > konami.length) seq.shift()
       if (seq.join() === konami.join()) { try { cheer() } catch {}; flash('believe it'); mark('done', 'konami') }
     }
+    const u = (e) => { if (e.code === 'KeyE' || e.code === 'Enter') petStop() }
     window.addEventListener('keydown', h)
-    return () => window.removeEventListener('keydown', h)
-  }, [entered, near, journal])
+    window.addEventListener('keyup', u)
+    return () => { window.removeEventListener('keydown', h); window.removeEventListener('keyup', u) }
+  }, [entered, near, journal, inventory, befriended])
 
   const totals = { lanterns: pathLanterns.length, scrolls: scrolls.length }
   const hudOn = entered && !photo && !crowned
@@ -415,8 +440,9 @@ export default function App() {
   const nearShown = near && near.type === 'pet' ? {
     ...near,
     blurb: befriended ? 'Your fox. It goes where you go now, and it has opinions about rice balls.' : 'A fox kit, sat by the gate as if it has been waiting for someone in particular.',
-    cta: inventory > 0 ? `Feed it a rice ball · ${inventory} left` : befriended ? 'Pet the fox' : 'Say hello',
+    cta: inventory > 0 ? `Feed it a rice ball · ${inventory} left` : befriended ? 'Scratch behind the ears' : 'Say hello',
   } : near
+  const holdPrompt = !!near && near.type === 'pet' && inventory === 0
 
   return (
     <>
@@ -426,7 +452,7 @@ export default function App() {
         gl={{ antialias: false, powerPreference: 'high-performance', toneMapping: THREE.NoToneMapping }}
       >
         <color attach="background" args={[ENV.skyBottom]} />
-        <fog attach="fog" args={[ENV.fog, 30, 230]} />
+        <fog attach="fog" args={[ENV.fog, 40, 260]} />
         <DevHook />
         <MusicDirector lit={lit.size} total={pathLanterns.length} freed={sealBroken} />
         <AdaptiveDpr pixelated={false} />
@@ -436,7 +462,7 @@ export default function App() {
             sealBroken={sealBroken} freed={freed} lit={lit} found={found} rungAt={rungAt} raining={raining}
             playerRef={playerRef} taikoAt={taikoAt} shaken={shaken} hit={save.hit} struck={struck}
             onScatter={() => mark('done', 'crates')} cratesApi={cratesApi} bubbles={bubbles} rivalHitAt={rivalHitAt}
-            food={save.food} petApi={petApi} petItem={petItem} befriended={befriended}
+            food={save.food} petApi={petApi} petItem={petItem} befriended={befriended} blockers={allBlockers} anim={anim} onBond={addBond}
           />
           <Controller
             spawn={[0, 0, -2]} blockers={allBlockers} camObstacles={camObstacles} interactables={interactables} nav={nav} state={anim}
@@ -458,7 +484,7 @@ export default function App() {
           onJournal={() => setJournal(true)} touch={touch} compass={compass} aimLabel={aimLabel}
         />
       )}
-      {hudOn && <Prompt near={nearShown} onAct={act} />}
+      {hudOn && <Prompt near={nearShown} onAct={act} hold={holdPrompt} onHoldStart={petStart} onHoldEnd={petStop} />}
       {hudOn && touch && (
         <TouchControls input={input} onThrow={() => shuriken.current && shuriken.current.throwForward()} onDash={() => { input.current.dash = true }} />
       )}

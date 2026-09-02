@@ -442,3 +442,11 @@ body.touch .aim { bottom: 128px; }
 /* ── Scrolls found, in the journal ────────────────────────────────── */
 .s-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .s-list li { font-family: var(--font-d); font-size: 15px; line-height: 1.45; color: rgba(239,231,214,0.88); padding: 8px 12px; border-radius: 10px; background: rgba(239,231,214,0.05); }
+
+/* ── The fox, in the journal, and the held prompt ─────────────────── */
+.q-fox { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-top: 22px; padding: 12px 14px; border-radius: 12px; background: rgba(255,111,156,0.08); border: 1px solid rgba(255,111,156,0.25); }
+.q-fox-name { font-family: var(--font-d); font-size: 17px; font-weight: 600; }
+.q-fox-hearts { color: #ff6f9c; letter-spacing: 0.12em; font-size: 15px; }
+.q-fox-note { flex-basis: 100%; font-size: 12.5px; color: rgba(239,231,214,0.6); }
+.prompt-btn.hold { user-select: none; -webkit-user-select: none; touch-action: none; }
+.prompt-btn.hold:active { filter: brightness(1.25); transform: translateY(1px); }

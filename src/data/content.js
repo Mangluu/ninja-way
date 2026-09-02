@@ -34,18 +34,18 @@ export const C = {
 }
 
 // Environment — a golden-hour dusk. Warm, cel-shades beautifully, makes gold glow.
-// Environment — a moonlit night. The village is dark enough that the lanterns
-// you light are genuinely the light source, not decoration on top of daylight.
+// Environment — the blue hour after sunset. Bright enough to read every tree
+// and face, dark enough that a lit lantern still changes the street.
 export const ENV = {
-  skyTop: '#070d22',
-  skyMid: '#111c3d',
-  skyBottom: '#26314f',
-  fog: '#101a33',
+  skyTop: '#0d1c40',
+  skyMid: '#1f3466',
+  skyBottom: '#40548a',
+  fog: '#22355c',
   fogNear: 14,
   fogFar: 105,
-  sun: '#aabfe8',          // moonlight, not sunlight
-  ground: '#2f3a30',
-  moon: '#dce8ff',
+  sun: '#cfdcff',          // moonlight, bright enough to read the valley by
+  ground: '#3e4d3c',
+  moon: '#e4edff',
 }
 
 // SAHLOKA — the star everything orbits. On a hill at the far end, always visible.
@@ -172,6 +172,7 @@ export const QUESTS = [
   { key: 'done', id: 'crates', name: 'Knock over a crate stack', hint: 'Sprint straight through one.' },
   { key: 'food',  name: 'Find the five rice balls', total: 5, hint: 'On little plates around the village. Someone keeps leaving them out.' },
   { key: 'fed',   name: 'Feed the fox three times', total: 3, hint: 'It will follow you anywhere for a rice ball.' },
+  { key: 'bond',  name: 'Win the fox over', total: 20, hint: 'Twenty seconds of scratches. Hold E beside it.' },
   { key: 'done', id: 'summit', name: 'Climb to the summit gate', hint: 'Up the torii avenue, at the far end.' },
 ]
 
@@ -182,7 +183,9 @@ export const SECRETS = [
 ]
 
 export function questProgress(save, q) {
-  return q.key === 'done' ? (save.done.has(q.id) ? 1 : 0) : Math.min(save[q.key].size, q.total)
+  if (q.key === 'done') return save.done.has(q.id) ? 1 : 0
+  const v = save[q.key]
+  return Math.min(typeof v === 'number' ? Math.floor(v) : v.size, q.total)
 }
 
 export function completion(save) {

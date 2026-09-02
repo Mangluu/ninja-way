@@ -7,7 +7,7 @@ import * as THREE from 'three'
 // The darkest band is still lifted off zero: a ramp that bottoms out at black crushes
 // every surface facing away from the sun into silhouette, which is what made the
 // temple roofs read as holes. A floor keeps shadowed faces readable and coloured.
-const SHADOW_FLOOR = 0.30
+const SHADOW_FLOOR = 0.48
 
 function makeGradient(steps) {
   const data = new Uint8Array(steps)

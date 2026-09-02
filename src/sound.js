@@ -478,3 +478,16 @@ export function munch() {
     n.connect(bp).connect(g).connect(out()); n.start(t)
   }
 }
+
+// Two fingers in the mouth: a rising note and a falling one.
+export function whistle() {
+  const c = initAudio(), t = c.currentTime
+  const bus = c.createGain(); bus.gain.value = 0.7
+  wetDry(bus, 0.35)
+  ;[[1100, 1700, 0, 0.22], [1750, 1250, 0.24, 0.26]].forEach(([f1, f2, at, len]) => {
+    const o = c.createOscillator(); o.type = 'sine'
+    o.frequency.setValueAtTime(f1, t + at); o.frequency.exponentialRampToValueAtTime(f2, t + at + len)
+    const g = c.createGain(); env(g, t + at, 0.02, len, 0.16)
+    o.connect(g).connect(bus); o.start(t + at); o.stop(t + at + len + 0.1)
+  })
+}

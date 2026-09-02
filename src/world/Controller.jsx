@@ -184,7 +184,7 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
 
     // a one-shot in progress holds the feet, for as long as it needs
     const lock = st.oneShot ? (LOCK[st.oneShot] || 0) : 0
-    const locked = st.oneShot && now - st.oneShotAt < lock
+    const locked = st.oneShot && (now - st.oneShotAt < lock || st.hold)
 
     let dz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
     let dx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)

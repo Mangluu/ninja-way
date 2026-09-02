@@ -77,16 +77,21 @@ export function Hud({ muted, onToggleMute, lit = 0, lanterns = 0, found = 0, scr
   )
 }
 
-export function Prompt({ near, onAct }) {
+// Some things are done with a press, petting is done with a hold: the button
+// then starts on pointer down and stops when the finger lifts or leaves.
+export function Prompt({ near, onAct, hold = false, onHoldStart, onHoldEnd }) {
   if (!near) return null
   const isSahloka = near.type === 'sahloka'
+  const handlers = hold
+    ? { onPointerDown: (e) => { e.preventDefault(); onHoldStart && onHoldStart() }, onPointerUp: onHoldEnd, onPointerLeave: onHoldEnd, onPointerCancel: onHoldEnd, onContextMenu: (e) => e.preventDefault() }
+    : { onClick: onAct }
   return (
     <div className={`prompt ${isSahloka ? 'prompt-sahloka' : ''}`}>
       <div className="prompt-tag">{isSahloka ? 'THE SUMMIT' : near.tag}</div>
       <div className="prompt-name">{near.name}</div>
       <p className="prompt-blurb">{near.blurb}</p>
-      <button className={`prompt-btn ${isSahloka ? 'gold' : ''}`} onClick={onAct}>
-        {isSahloka ? 'Enter Sahloka ⛩' : (near.cta || 'Open')} <span className="key">E</span>
+      <button className={`prompt-btn ${isSahloka ? 'gold' : ''} ${hold ? 'hold' : ''}`} {...handlers}>
+        {isSahloka ? 'Enter Sahloka ⛩' : (near.cta || 'Open')} <span className="key">{hold ? 'hold E' : 'E'}</span>
       </button>
     </div>
   )
@@ -211,6 +216,13 @@ export function Journal({ open, save, scrollsFound = [], onClose, onReset }) {
           </ul>
         </section>
 
+        {save.done.has('pet') && (
+          <div className="q-fox">
+            <span className="q-fox-name">Kurama</span>
+            <span className="q-fox-hearts">{'♥'.repeat(Math.min(5, Math.floor((save.bond || 0) / 4)))}{'♡'.repeat(5 - Math.min(5, Math.floor((save.bond || 0) / 4)))}</span>
+            <span className="q-fox-note">{save.fed.size} rice ball{save.fed.size === 1 ? '' : 's'} eaten · {Math.floor(save.bond || 0)} s of scratches</span>
+          </div>
+        )}
         {scrollsFound.length > 0 && (
           <section>
             <div className="q-sec"><span>Scrolls</span><span className="q-pct">{scrollsFound.length} found</span></div>

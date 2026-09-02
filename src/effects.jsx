@@ -9,10 +9,10 @@ const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)
 export default function Effects() {
   return (
     <EffectComposer multisampling={0} disableNormalPass>
-      {!coarse && <N8AO aoRadius={2.2} intensity={2.4} distanceFalloff={1.0} quality="medium" />}
-      <Bloom mipmapBlur luminanceThreshold={0.55} luminanceSmoothing={0.25} intensity={1.45} levels={7} />
+      {!coarse && <N8AO aoRadius={1.6} intensity={1.3} distanceFalloff={1.0} quality="medium" />}
+      <Bloom mipmapBlur luminanceThreshold={0.72} luminanceSmoothing={0.2} intensity={1.1} levels={7} />
       <ToneMapping mode={ToneMappingMode.AGX} />
-      <Vignette offset={0.22} darkness={0.62} eskil={false} />
+      <Vignette offset={0.25} darkness={0.4} eskil={false} />
       <SMAA />
     </EffectComposer>
   )
