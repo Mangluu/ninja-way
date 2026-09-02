@@ -27,43 +27,6 @@ function Toon({ color, emissive, emissiveIntensity = 0, flatShading = false, ...
 const INK = C.sumi
 const ink = (t = 0.03) => <Outlines thickness={t} color={INK} />
 
-// ── Torii gate ──────────────────────────────────────────────────────────────
-export function Torii({ position = [0, 0, 0], scale = 1, rotation = [0, 0, 0], color = C.vermilion }) {
-  return (
-    <group position={position} scale={scale} rotation={rotation}>
-      {[-1.5, 1.5].map((x) => (
-        <mesh key={x} position={[x, 2, 0]} castShadow>
-          <cylinderGeometry args={[0.17, 0.22, 4, 12]} />
-          <Toon color={color} {...lacquer(1, 2)} />
-          {ink()}
-        </mesh>
-      ))}
-      {/* nuki (lower beam) */}
-      <mesh position={[0, 2.9, 0]} castShadow>
-        <boxGeometry args={[3.7, 0.32, 0.34]} />
-        <Toon color={color} {...lacquer(3, 1)} />
-        {ink()}
-      </mesh>
-      {/* kasagi (top beam) with slight upturn caps */}
-      <mesh position={[0, 3.75, 0]} castShadow>
-        <boxGeometry args={[4.5, 0.34, 0.5]} />
-        <Toon color={color} {...lacquer(4, 1)} />
-        {ink()}
-      </mesh>
-      {[-2.2, 2.2].map((x) => (
-        <mesh key={x} position={[x, 3.86, 0]} rotation={[0, 0, x < 0 ? 0.18 : -0.18]} castShadow>
-          <boxGeometry args={[0.7, 0.24, 0.52]} />
-          <Toon color={color} />
-        </mesh>
-      ))}
-      <mesh position={[0, 4.02, 0]}>
-        <boxGeometry args={[0.5, 0.2, 0.6]} />
-        <Toon color={C.sumi} />
-      </mesh>
-    </group>
-  )
-}
-
 // ── Village house with a tiered upturned roof ────────────────────────────────
 export function House({ position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, tone = C.washi }) {
   return (
@@ -138,48 +101,8 @@ export function LanternPost({ position = [0, 0, 0], color = C.vermilion, scale =
   )
 }
 
-// ── Sakura tree (gently swaying) ─────────────────────────────────────────────
-export function Sakura({ position = [0, 0, 0], scale = 1, seed = 0, shookAt = 0 }) {
-  const canopy = useRef()
-  useFrame((s) => {
-    if (!canopy.current) return
-    const t = s.clock.elapsedTime
-    let sway = Math.sin(t * 0.8 + seed) * 0.05
-    // a shake rings out and settles
-    if (shookAt) {
-      const dt = (performance.now() - shookAt) / 1000
-      if (dt < 2.5) sway += Math.sin(dt * 13) * Math.exp(-dt * 1.8) * 0.22
-    }
-    canopy.current.rotation.z = sway
-  })
-  const blobs = [
-    [0, 2.1, 0, 1.3, C.sakura],
-    [0.9, 1.9, 0.3, 0.95, C.sakuraDeep],
-    [-0.8, 2.0, -0.4, 0.9, C.sakura],
-    [0.2, 2.7, -0.5, 0.85, C.sakura],
-    [-0.3, 2.5, 0.7, 0.8, C.sakuraDeep],
-  ]
-  return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 0.9, 0]} rotation={[0, 0, 0.06]} castShadow>
-        <cylinderGeometry args={[0.16, 0.28, 1.9, 7]} />
-        <Toon color={C.woodDark} {...woodPost(1, 1)} />
-      </mesh>
-      <group ref={canopy}>
-        {blobs.map(([x, y, z, r, col], i) => (
-          <mesh key={i} position={[x, y, z]} castShadow>
-            <icosahedronGeometry args={[r, 1]} />
-            <Toon color={col} flatShading />
-          </mesh>
-        ))}
-      </group>
-      <FallenPetals shookAt={shookAt} />
-    </group>
-  )
-}
-
 // Blossom shaken loose: a burst that tumbles down and fades, reused each shake.
-function FallenPetals({ shookAt = 0, count = 26 }) {
+export function FallenPetals({ shookAt = 0, count = 26 }) {
   const mesh = useRef()
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const seeds = useMemo(() => Array.from({ length: count }, () => ({
@@ -216,32 +139,6 @@ function FallenPetals({ shookAt = 0, count = 26 }) {
     </instancedMesh>
   )
 }
-
-// ── Pine ─────────────────────────────────────────────────────────────────────
-export function Pine({ position = [0, 0, 0], scale = 1 }) {
-  return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 0.5, 0]} castShadow><cylinderGeometry args={[0.13, 0.2, 1, 7]} /><Toon color={C.woodDark} {...woodPost(1, 1)} /></mesh>
-      {[[1.0, 1.3, 1.1], [1.75, 1.0, 0.85], [2.4, 0.7, 0.62]].map(([y, r, h], i) => (
-        <mesh key={i} position={[0, y, 0]} castShadow>
-          <coneGeometry args={[r, h, 8]} />
-          <Toon color={i === 2 ? C.leaf : C.leafDark} flatShading />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-// ── Rock ──────────────────────────────────────────────────────────────────────
-export function Rock({ position = [0, 0, 0], scale = 1, rotation = [0, 0, 0] }) {
-  return (
-    <mesh position={position} scale={[scale, scale * 0.7, scale]} rotation={rotation} castShadow receiveShadow>
-      <dodecahedronGeometry args={[0.6, 0]} />
-      <Toon color={C.stone} flatShading {...stone(1, 1)} />
-    </mesh>
-  )
-}
-
 
 // ── A scroll to find, resting on a small stone ───────────────────────────────
 export function Scroll({ position = [0, 0, 0], found = false }) {

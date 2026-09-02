@@ -2,11 +2,11 @@ import { useRef, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { C, SAHLOKA } from '../data/content'
+import { gateZs, entranceGate } from './layout'
 
 // The order the fire takes them: the entrance torii first, then every gate up
-// the avenue, then the hill. Matches layout.js — entrance at -5, six at
-// SAHLOKA.z - 16 - i*6 which walks back down the valley.
-const GATES = [-5, 28, 34, 40, 46, 52, 58]
+// the avenue toward the hill, then the hill itself.
+const GATES = [entranceGate.z, ...[...gateZs].reverse()]
 const HOLD = 1.1          // real seconds the world holds still before the fire runs
 const SPREAD = 0.26       // gate to gate
 const LAST = HOLD + GATES.length * SPREAD
@@ -71,7 +71,7 @@ export default function Finale({ active = false }) {
         </group>
       ))}
       {/* the hill takes the fire last, then settles */}
-      <pointLight ref={hill} color={C.orangeLite} intensity={0} distance={70} decay={2} position={[SAHLOKA.x, 12, SAHLOKA.z]} />
+      <pointLight ref={hill} color={C.orangeLite} intensity={0} distance={90} decay={2} position={[SAHLOKA.x, 14, SAHLOKA.z]} />
     </group>
   )
 }

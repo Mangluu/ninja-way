@@ -1,14 +1,16 @@
 import { useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import Shinobi from './Shinobi'
+import Ninja from './Ninja'
 import { WORLD, C } from '../data/content'
-import { groundHeight } from './layout'
+import { groundHeight, PICK } from './layout'
+import { findPath } from './nav'
 import { footstep, doubleJump } from '../sound.js'
 
-const SPEED = 6, SPRINT = 10, CHAR_R = 0.45
+const SPEED = 6, SPRINT = 10.5, CHAR_R = 0.45
+const DASH_SPEED = 16, DASH_TIME = 0.32
 const EMBER_COUNT = 18
-const JUMP = 8.0
+const JUMP = 8.4
 const GRAV_UP = 18          // lighter going up…
 const GRAV_DOWN = 30        // …heavier coming down: the classic platformer arc
 const CUT = 0.5             // let go early and the rise is halved, once
@@ -16,24 +18,39 @@ const COYOTE = 0.12         // still jumpable this long after leaving the ground
 const BUFFER = 0.15         // a jump pressed this early still fires on landing
 const AIR_CONTROL = 0.35    // you can steer in the air, but not pivot on a dime
 const PITCH_MIN = 0.06, PITCH_MAX = 1.05
+const FOV = 52, FOV_SPRINT = 58
 const DUST_COUNT = 4
+const TAP_PX = 8            // a finger that moves less than this is a tap, not a look
+const TAP_MS = 450
 const TAU = Math.PI * 2
+// how long each one-shot holds the feet still
+const LOCK = { Throw: 0.34, Interact: 0.45, PickUp: 0.55, Cheer: 1.1, Dodge_Forward: DASH_TIME }
 
 const shortAngle = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d }
+const clamp = THREE.MathUtils.clamp
 
-export default function Controller({ freed = false, spawn = [0, 0, -2], blockers = [], interactables = [], onProximity, playerRef, lit = 0 }) {
+// Input comes from three places and all of them land here: the keyboard, the
+// touch joystick and buttons (through `input`, a ref the DOM controls write
+// into), and taps on the world itself. A tap on the ground walks you there,
+// along a path that goes around things; a tap on a thing is handed up through
+// `onTap` for the app to throw at or walk to. Nobody has to know WASD.
+export default function Controller({ freed = false, spawn = [0, 0, -2], blockers = [], camObstacles = [], interactables = [], onProximity, onTap, input, playerRef, lit = 0, state, nav }) {
   const rig = useRef()        // world position + facing
   const flipRig = useRef()    // somersault, *inside* facing so the axis is always "forward"
-  const squash = useRef()     // landing squash / take-off stretch
-  const { camera, gl } = useThree()
+  const pickGroup = useRef()  // invisible cylinders, one per interactable, for taps
+  const marker = useRef()     // the ring where a tap told him to go
+  const { camera, gl, raycaster } = useThree()
   const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  // the camera steers around what would fill the screen: buildings and canopies
+  const camBlockers = useMemo(() => [...blockers.filter((b) => b.r >= 2), ...camObstacles], [blockers, camObstacles])
 
   const pos = useRef(new THREE.Vector3(spawn[0], 0, spawn[2]))
   const vel = useRef(new THREE.Vector3())
   const yaw = useRef(0)
-  const pitch = useRef(0.42)
+  const pitch = useRef(0.3)
   const facing = useRef(0)
-  const dist = useRef(9)
+  const faceTarget = useRef(null)
+  const dist = useRef(7)
   const charY = useRef(0)
   const vy = useRef(0)
   const grounded = useRef(true)
@@ -42,27 +59,30 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
   const buffered = useRef(0)
   const jumps = useRef(0)
   const spacePrev = useRef(false)
+  const dashPrev = useRef(false)
+  const dash = useRef(null)   // { until, dx, dz }
   const flip = useRef(1)
-  const squashT = useRef(1)
   const step = useRef(0)
   const shake = useRef(0)
   const keys = useRef({})
   const drag = useRef(null)
-  const moveState = useRef({ moving: false, speed: 0 })
+  const walk = useRef(null)   // { pts, i, stop, best, stall }
+  const ownState = useRef({ moving: false, speed: 0, sprinting: false, airborne: false, vy: 0, landedAt: 0, oneShot: null, oneShotAt: 0, justJumped: false })
+  const moveState = state || ownState
   const nearestId = useRef(undefined)
+  const onTapRef = useRef(onTap); onTapRef.current = onTap
+  const navRef = useRef(nav); navRef.current = nav
+  const ndc = useMemo(() => new THREE.Vector2(), [])
 
-  const lookAt = useRef(new THREE.Vector3(spawn[0], 1.3, spawn[2]))
+  const lookAt = useRef(new THREE.Vector3(spawn[0], 1.45, spawn[2]))
   const camPos = useRef(new THREE.Vector3())
 
   // The second jump is a clone assist: a copy flashes into being underneath and
-  // you push off it. It reads as gaining height off something, which a
-  // somersault never did — that just said "spinning".
+  // you push off it. It reads as gaining height off something.
   const clone = useRef()
   const cloneT = useRef(1)
   const clonePos = useRef(new THREE.Vector3())
 
-  // Ember trail, cloak state only. The dust rings lie flat on the ground for
-  // footfalls; embers need to lift and drift, so they are their own thing.
   const embers = useRef([])
   const emberState = useRef(Array.from({ length: EMBER_COUNT }, () => ({ t: 1, x: 0, y: 0, z: 0, vx: 0, vz: 0 })))
   const emberNext = useRef(0)
@@ -71,6 +91,21 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
   const dust = useRef([])
   const dustState = useRef(Array.from({ length: DUST_COUNT }, () => ({ t: 1, x: 0, y: 0, z: 0 })))
   const dustNext = useRef(0)
+  const puff = (x, y, z) => {
+    if (reduced) return
+    const slot = dustState.current[dustNext.current % DUST_COUNT]
+    slot.t = 0; slot.x = x; slot.y = y; slot.z = z
+    dustNext.current++
+  }
+
+  // Walk to a point along the nav grid. `stop` is how close counts as arrived:
+  // tight for a patch of ground, looser for a thing you want to stand beside.
+  const walkTo = (x, z, stop = 0.45) => {
+    const to = { x: clamp(x, WORLD.minX, WORLD.maxX), z: clamp(z, WORLD.minZ, WORLD.maxZ) }
+    const pts = (navRef.current && findPath(navRef.current, pos.current, to)) || [to]
+    walk.current = { pts, i: 0, stop, best: Infinity, stall: 0 }
+  }
+  useEffect(() => { if (input) input.current.walkTo = walkTo }, [input])
 
   useEffect(() => {
     const dn = (e) => { keys.current[e.code] = true; if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault() }
@@ -78,48 +113,141 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
     window.addEventListener('keydown', dn)
     window.addEventListener('keyup', up)
     const el = gl.domElement
-    const pd = (e) => { drag.current = { x: e.clientX, y: e.clientY } }
-    const pm = (e) => {
-      if (!drag.current) return
-      yaw.current -= (e.clientX - drag.current.x) * 0.005
-      pitch.current = THREE.MathUtils.clamp(pitch.current + (e.clientY - drag.current.y) * 0.004, PITCH_MIN, PITCH_MAX)
-      drag.current = { x: e.clientX, y: e.clientY }
+
+    // A tap: the pick cylinders first, then the ground. The ground is met at
+    // y = 0 and refined once against the terrain height there.
+    const tap = (cx, cy) => {
+      const r = el.getBoundingClientRect()
+      ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1)
+      raycaster.setFromCamera(ndc, camera)
+      const hits = pickGroup.current ? raycaster.intersectObjects(pickGroup.current.children, false) : []
+      if (hits.length) {
+        const item = hits[0].object.userData.item
+        if (onTapRef.current) onTapRef.current(item, Math.hypot(pos.current.x - item.x, pos.current.z - item.z))
+        return
+      }
+      const o = raycaster.ray.origin, d = raycaster.ray.direction
+      if (d.y >= -1e-4) return
+      let t = -o.y / d.y
+      let x = o.x + d.x * t, z = o.z + d.z * t
+      const h = groundHeight(x, z)
+      if (h > 0) { t = (h - o.y) / d.y; x = o.x + d.x * t; z = o.z + d.z * t }
+      walkTo(x, z)
     }
-    const pu = () => { drag.current = null }
-    const wheel = (e) => { dist.current = THREE.MathUtils.clamp(dist.current + e.deltaY * 0.01, 5, 16); e.preventDefault() }
+
+    // One pointer at a time, tracked by id, so a second finger (the joystick)
+    // never hijacks the look.
+    const pd = (e) => {
+      if (drag.current) return
+      drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), moved: false }
+    }
+    const pm = (e) => {
+      const g = drag.current
+      if (!g || e.pointerId !== g.id) return
+      const dx = e.clientX - g.x, dy = e.clientY - g.y
+      g.x = e.clientX; g.y = e.clientY
+      if (!g.moved) {
+        if (Math.hypot(e.clientX - g.sx, e.clientY - g.sy) > TAP_PX) g.moved = true
+        else return
+      }
+      yaw.current -= dx * 0.005
+      pitch.current = clamp(pitch.current + dy * 0.004, PITCH_MIN, PITCH_MAX)
+    }
+    const pu = (e) => {
+      const g = drag.current
+      if (!g || e.pointerId !== g.id) return
+      drag.current = null
+      if (!g.moved && e.type === 'pointerup' && performance.now() - g.t < TAP_MS) tap(e.clientX, e.clientY)
+    }
+    const wheel = (e) => { dist.current = clamp(dist.current + e.deltaY * 0.01, 4, 13); e.preventDefault() }
     el.addEventListener('pointerdown', pd)
     window.addEventListener('pointermove', pm)
     window.addEventListener('pointerup', pu)
+    window.addEventListener('pointercancel', pu)
     el.addEventListener('wheel', wheel, { passive: false })
     return () => {
       window.removeEventListener('keydown', dn); window.removeEventListener('keyup', up)
       el.removeEventListener('pointerdown', pd); window.removeEventListener('pointermove', pm)
-      window.removeEventListener('pointerup', pu); el.removeEventListener('wheel', wheel)
+      window.removeEventListener('pointerup', pu); window.removeEventListener('pointercancel', pu)
+      el.removeEventListener('wheel', wheel)
     }
-  }, [gl])
+  }, [gl, camera, raycaster, ndc])
 
   useFrame((_, dt) => {
     dt = Math.min(dt, 0.05)
+    const now = performance.now() / 1000
+    const st = moveState.current
     const k = keys.current
-    const dz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
-    const dx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-    const sprinting = k.ShiftLeft || k.ShiftRight
-    // cloak state: quicker on foot and one extra jump in the air
-    const maxSpeed = (sprinting ? SPRINT : SPEED) * (freed ? 1.38 : 1)
+    const inp = input ? input.current : null
+    const joy = inp ? inp.joy : null
+
+    // a one-shot in progress holds the feet, for as long as it needs
+    const lock = st.oneShot ? (LOCK[st.oneShot] || 0) : 0
+    const locked = st.oneShot && now - st.oneShotAt < lock
+
+    let dz = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
+    let dx = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
+    const jm = joy ? Math.hypot(joy.x, joy.y) : 0
+    if (!dz && !dx && jm > 0.08) { dx = joy.x; dz = -joy.y }
+    let manual = dx !== 0 || dz !== 0
+    let sprinting = !!(k.ShiftLeft || k.ShiftRight) || jm > 0.92
+    if (manual) walk.current = null
+    // moving again ends a throw or a cheer once the meaningful part is over
+    if (manual && st.oneShot && !locked && st.oneShot !== 'Dodge_Forward') st.oneShot = null
+    if (locked) { dx = 0; dz = 0; manual = false }
 
     const fwd = new THREE.Vector3(Math.sin(yaw.current), 0, Math.cos(yaw.current))
     const right = new THREE.Vector3(-Math.cos(yaw.current), 0, Math.sin(yaw.current))
     const move = new THREE.Vector3().addScaledVector(fwd, dz).addScaledVector(right, dx)
-    const moving = move.lengthSq() > 0.001
-    if (moving) move.normalize()
 
-    // Air control is deliberately weaker: you can adjust a jump, not rewrite it.
-    const accel = grounded.current ? 12 : 12 * AIR_CONTROL
-    vel.current.lerp(move.multiplyScalar(maxSpeed), 1 - Math.exp(-accel * dt))
+    // Walking to a tapped point: waypoint to waypoint, jogging, breaking into a
+    // run if it is far, giving up quietly if something has blocked the way.
+    if (!manual && !locked && walk.current) {
+      const w = walk.current
+      const tgt = w.pts[w.i]
+      const wx = tgt.x - pos.current.x, wz = tgt.z - pos.current.z, wd = Math.hypot(wx, wz)
+      const last = w.i === w.pts.length - 1
+      if (wd < (last ? w.stop : 0.7)) {
+        if (last) walk.current = null
+        else { w.i++; w.best = Infinity; w.stall = 0 }
+      } else {
+        move.set(wx / wd, 0, wz / wd)
+        const remaining = wd + (w.pts.length - 1 - w.i) * 3
+        sprinting = remaining > 9
+        if (wd < w.best - 0.02) { w.best = wd; w.stall = 0 } else if ((w.stall += dt) > 0.8) walk.current = null
+      }
+    }
+
+    // the dash: a short burst along the facing, on C or the button
+    const dashNow = !!k.KeyC || !!(inp && inp.dash)
+    if (inp) inp.dash = false
+    if (dashNow && !dashPrev.current && grounded.current && !st.oneShot) {
+      const ang = move.lengthSq() > 0.001 ? Math.atan2(move.x, move.z) : facing.current
+      dash.current = { until: now + DASH_TIME, dx: Math.sin(ang), dz: Math.cos(ang) }
+      st.oneShot = 'Dodge_Forward'; st.oneShotAt = now
+      facing.current = ang
+      puff(pos.current.x, charY.current, pos.current.z)
+      try { footstep() } catch {}
+    }
+    dashPrev.current = dashNow
+    const dashing = dash.current && now < dash.current.until
+    if (dash.current && !dashing) dash.current = null
+
+    const maxSpeed = (sprinting ? SPRINT : SPEED) * (freed ? 1.38 : 1)
+    const moving = move.lengthSq() > 0.001
+    if (move.lengthSq() > 1) move.normalize()     // keys give unit axes; the stick is analogue
+
+    if (dashing) {
+      vel.current.set(dash.current.dx * DASH_SPEED, 0, dash.current.dz * DASH_SPEED)
+    } else {
+      // Air control is deliberately weaker: you can adjust a jump, not rewrite it.
+      const accel = grounded.current ? 14 : 14 * AIR_CONTROL
+      vel.current.lerp(move.multiplyScalar(maxSpeed), 1 - Math.exp(-accel * dt))
+    }
 
     const np = pos.current.clone().addScaledVector(vel.current, dt)
-    np.x = THREE.MathUtils.clamp(np.x, WORLD.minX, WORLD.maxX)
-    np.z = THREE.MathUtils.clamp(np.z, WORLD.minZ, WORLD.maxZ)
+    np.x = clamp(np.x, WORLD.minX, WORLD.maxX)
+    np.z = clamp(np.z, WORLD.minZ, WORLD.maxZ)
     for (const b of blockers) {
       const ddx = np.x - b.x, ddz = np.z - b.z
       const d = Math.hypot(ddx, ddz), min = b.r + CHAR_R
@@ -129,13 +257,10 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
 
     // ── vertical ──────────────────────────────────────────────────────────────
     const groundY = groundHeight(np.x, np.z)
-    const spaceNow = !!k.Space
+    const spaceNow = (!!k.Space || !!(inp && inp.jump)) && !locked
     const pressed = spaceNow && !spacePrev.current
     const released = !spaceNow && spacePrev.current
 
-    // Coyote time and jump buffering: the two things that make a jump feel fair
-    // rather than mistimed. You can jump just after stepping off, and a press
-    // slightly too early still fires the moment you land.
     coyote.current = grounded.current ? COYOTE : Math.max(0, coyote.current - dt)
     buffered.current = pressed ? BUFFER : Math.max(0, buffered.current - dt)
 
@@ -144,26 +269,21 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
       jumps.current = 1
       buffered.current = 0
       coyote.current = 0
-      squashT.current = 0
+      st.justJumped = true
+      if (st.oneShot !== 'Dodge_Forward') st.oneShot = null
+      puff(np.x, groundY, np.z)
     } else if (pressed && !grounded.current && jumps.current <= (freed ? 2 : 1)) {
       vy.current = JUMP * (jumps.current === 1 ? 0.92 : 0.80)
       jumps.current += 1
       flip.current = 0
       cloneT.current = 0
       clonePos.current.set(np.x, charY.current - 0.15, np.z)
+      st.justJumped = true
       try { doubleJump() } catch {}
-      if (!reduced) {
-        const slot = dustState.current[dustNext.current % DUST_COUNT]
-        slot.t = 0; slot.x = np.x; slot.y = charY.current; slot.z = np.z
-        dustNext.current++
-      }
+      puff(np.x, charY.current, np.z)
     }
     spacePrev.current = spaceNow
 
-    // Release early and the rise is cut short — but only on the frame the key
-    // actually goes up. Applying this every airborne frame compounded it into
-    // near-zero within about four frames, so a tap barely left the ground and
-    // there was never enough air time to reach the second jump.
     if (released && vy.current > 0) vy.current *= CUT
 
     const fallSpeed = vy.current
@@ -175,71 +295,71 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
 
     if (grounded.current && !wasGrounded.current && fallSpeed < -3) {
       const power = Math.min(Math.abs(fallSpeed) / JUMP, 1)
-      squashT.current = 0
-      if (!reduced) {
-        shake.current = Math.min(shake.current + power * 0.2, 0.28)
-        const slot = dustState.current[dustNext.current % DUST_COUNT]
-        slot.t = 0; slot.x = np.x; slot.y = groundY; slot.z = np.z
-        dustNext.current++
-      }
+      st.landedAt = performance.now()
+      if (!reduced) shake.current = Math.min(shake.current + power * 0.2, 0.28)
+      puff(np.x, groundY, np.z)
       try { footstep() } catch {}
-      // let the flip finish if it is most of the way round; only snap upright
-      // when it has barely begun, so you never land mid-rotation looking broken
       if (flip.current < 0.55) flip.current = 1
     }
     wasGrounded.current = grounded.current
 
     // ── pose ──────────────────────────────────────────────────────────────────
-    if (moving) facing.current += shortAngle(facing.current, Math.atan2(move.x, move.z)) * (1 - Math.exp(-10 * dt))
+    if (inp && inp.face != null) { faceTarget.current = inp.face; inp.face = null }
+    if (moving && !dashing) { facing.current += shortAngle(facing.current, Math.atan2(move.x, move.z)) * (1 - Math.exp(-10 * dt)); faceTarget.current = null }
+    else if (faceTarget.current != null) {
+      const d = shortAngle(facing.current, faceTarget.current)
+      facing.current += d * (1 - Math.exp(-18 * dt))
+      if (Math.abs(d) < 0.03) faceTarget.current = null
+    }
     if (flip.current < 1) flip.current = Math.min(1, flip.current + dt * 1.7)
-    if (squashT.current < 1) squashT.current = Math.min(1, squashT.current + dt * 5)
 
     if (rig.current) {
       rig.current.position.set(np.x, charY.current, np.z)
       rig.current.rotation.y = facing.current
     }
-    // The somersault lives inside the facing group, so it is always a forward
-    // roll regardless of which way the character happens to be pointing. That
-    // was the old bug: rotating the same group that carried facing meant the
-    // flip axis changed with your last direction of travel.
-    // a short tuck as he pushes off the clone, rather than a full roll
-    if (flipRig.current) {
-      // a full backward rotation. The previous version eased to 0.55 rad — a
-      // 32-degree nod that read as nothing at all.
-      flipRig.current.rotation.x = flip.current < 1 ? -flip.current * TAU : 0
-    }
-    if (squash.current && !reduced) {
-      const s = 1 - Math.sin(squashT.current * Math.PI) * 0.16
-      squash.current.scale.set(1 + (1 - s) * 0.6, s, 1 + (1 - s) * 0.6)
-    }
+    if (flipRig.current) flipRig.current.rotation.x = flip.current < 1 ? -flip.current * TAU : 0
 
-    moveState.current.moving = moving && grounded.current
-    moveState.current.speed = vel.current.length()
-    moveState.current.sprinting = moving && grounded.current && sprinting
-    moveState.current.airborne = !grounded.current
+    st.moving = moving && grounded.current && !dashing
+    st.speed = vel.current.length()
+    st.sprinting = st.moving && (sprinting || st.speed > SPEED * 1.15)
+    st.airborne = !grounded.current
+    st.vy = vy.current
     if (playerRef) {
       playerRef.current.x = np.x; playerRef.current.y = charY.current; playerRef.current.z = np.z
       playerRef.current.speed = vel.current.length()
+      playerRef.current.facing = facing.current
+      playerRef.current.grounded = grounded.current
     }
 
-    if (moving && grounded.current) {
+    if (moving && grounded.current && !dashing) {
       step.current += dt * (0.9 + vel.current.length() * 0.12)
       if (step.current > 0.34) { step.current = 0; try { footstep() } catch {} }
     }
 
-    // The clone: snaps in solid under your feet, then thins out and sinks as you
-    // leave it behind. This is what the second jump pushes off.
+    // the ring on the ground he is walking toward
+    if (marker.current) {
+      const w = walk.current
+      marker.current.visible = !!w
+      if (w) {
+        const end = w.pts[w.pts.length - 1]
+        marker.current.position.set(end.x, groundHeight(end.x, end.z) + 0.05, end.z)
+        marker.current.scale.setScalar(1 + Math.sin(performance.now() * 0.008) * 0.12)
+      }
+    }
+
+    // The clone: snaps in solid under your feet, then thins out and sinks as
+    // you leave it behind. This is what the second jump pushes off.
     if (clone.current) {
       if (cloneT.current >= 1) {
         clone.current.visible = false
       } else {
         cloneT.current = Math.min(cloneT.current + dt * 2.4, 1)
-        const k = cloneT.current
+        const kk = cloneT.current
         clone.current.visible = true
-        clone.current.position.set(clonePos.current.x, clonePos.current.y - k * 0.9, clonePos.current.z)
+        clone.current.position.set(clonePos.current.x, clonePos.current.y - kk * 0.9, clonePos.current.z)
         clone.current.rotation.y = facing.current
-        clone.current.scale.setScalar(0.92 + k * 0.3)
-        const fade = (1 - k) * 0.6
+        clone.current.scale.setScalar(0.92 + kk * 0.3)
+        const fade = (1 - kk) * 0.6
         clone.current.traverse((o) => { if (o.isMesh) o.material.opacity = fade })
       }
     }
@@ -256,11 +376,11 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
       m.material.opacity = (1 - s.t) * 0.45
     }
 
-    // ── ember trail ───────────────────────────────────────────────────────────
-    if (freed) {
+    // ── ember trail (cloak state), and dash trail always ──────────────────────
+    if (freed || dashing) {
       emberGap.current -= dt
-      if (emberGap.current <= 0 && (dx !== 0 || dz !== 0 || !grounded.current)) {
-        emberGap.current = 0.04
+      if (emberGap.current <= 0 && (moving || !grounded.current || dashing)) {
+        emberGap.current = dashing ? 0.02 : 0.04
         const e = emberState.current[emberNext.current % EMBER_COUNT]
         e.t = 0
         e.x = np.x + (Math.random() - 0.5) * 0.45
@@ -282,23 +402,27 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
       const k3 = (1 - e.t) * 0.13 + 0.02
       m.scale.setScalar(k3)
       m.material.opacity = Math.sin((1 - e.t) * Math.PI * 0.85) * 0.9
+      m.material.color.set(freed ? C.orangeLite : C.washi)
     }
 
     // ── camera ────────────────────────────────────────────────────────────────
     const horiz = Math.cos(pitch.current) * dist.current
     let cx = np.x - Math.sin(yaw.current) * horiz
     let cz = np.z - Math.cos(yaw.current) * horiz
-    let cy = charY.current + 1.4 + Math.sin(pitch.current) * dist.current
-    for (const b of blockers) {
+    let cy = charY.current + 1.5 + Math.sin(pitch.current) * dist.current
+    for (const b of camBlockers) {
       const ddx = cx - b.x, ddz = cz - b.z
       const d = Math.hypot(ddx, ddz), min = b.r + 0.8
       if (d < min && d > 1e-4) { const push = (min - d) / d; cx += ddx * push; cz += ddz * push }
     }
-    cy = Math.max(cy, groundHeight(cx, cz) + 1.3)
+    cy = Math.max(cy, groundHeight(cx, cz) + 1.2)
     camPos.current.set(cx, cy, cz)
     camera.position.lerp(camPos.current, 1 - Math.exp(-8 * dt))
-    lookAt.current.lerp({ x: np.x, y: charY.current + 1.3, z: np.z }, 1 - Math.exp(-10 * dt))
+    lookAt.current.lerp({ x: np.x, y: charY.current + 1.45, z: np.z }, 1 - Math.exp(-10 * dt))
     camera.lookAt(lookAt.current)
+    // the lens opens up a little at speed
+    const wantFov = (sprinting && moving) || dashing ? FOV_SPRINT : FOV
+    if (Math.abs(camera.fov - wantFov) > 0.05) { camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 5); camera.updateProjectionMatrix() }
     if (shake.current > 0.001) {
       shake.current *= Math.exp(-7 * dt)
       camera.position.x += (Math.random() - 0.5) * shake.current
@@ -308,6 +432,7 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
 
     let near = null, best = Infinity
     for (const it of interactables) {
+      if (!it.r) continue
       const d = Math.hypot(np.x - it.x, np.z - it.z)
       if (d < it.r && d < best) { best = d; near = it }
     }
@@ -319,9 +444,7 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
     <>
       <group ref={rig} position={[spawn[0], 0, spawn[2]]}>
         <group ref={flipRig}>
-          <group ref={squash}>
-            <Shinobi state={moveState} lit={lit} />
-          </group>
+          <Ninja state={moveState} lit={lit} freed={freed} playerRef={playerRef} />
         </group>
       </group>
       {/* the clone — a suggestion of him, not a second character */}
@@ -334,10 +457,25 @@ export default function Controller({ freed = false, spawn = [0, 0, -2], blockers
           <sphereGeometry args={[0.29, 12, 12]} />
           <meshBasicMaterial color={C.washi} transparent opacity={0} depthWrite={false} />
         </mesh>
-        <mesh position={[0, 0.66, 0]}>
-          <coneGeometry args={[0.42, 0.5, 12]} />
-          <meshBasicMaterial color={C.indigoDeep} transparent opacity={0} depthWrite={false} />
-        </mesh>
+      </group>
+
+      {/* where a tap sent him */}
+      <mesh ref={marker} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+        <ringGeometry args={[0.35, 0.5, 24]} />
+        <meshBasicMaterial color={C.goldLite} transparent opacity={0.7} depthWrite={false} toneMapped={false} />
+      </mesh>
+
+      {/* tap volumes: never drawn, only raycast */}
+      <group ref={pickGroup}>
+        {interactables.map((it) => {
+          const [r, h] = PICK[it.type] || [1, 1.6]
+          return (
+            <mesh key={it.id} position={[it.x, groundHeight(it.x, it.z) + h / 2, it.z]} userData={{ item: it }} visible={false}>
+              <cylinderGeometry args={[r, r, h, 8]} />
+              <meshBasicMaterial />
+            </mesh>
+          )
+        })}
       </group>
 
       <group>

@@ -1,15 +1,17 @@
-import { useRef, useMemo } from 'react'
+import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { C, SAHLOKA } from '../data/content'
 import { gradientMap } from '../lib/toon'
-import { Torii, StoneLantern } from './props'
+import { StoneLantern } from './props'
+import { Prop } from './props3d'
+import { HILL, avenue, entranceGate, temple } from './layout'
 
 function Gold({ intensity = 1.4, color = C.gold }) {
   return <meshToonMaterial gradientMap={gradientMap} color={color} emissive={color} emissiveIntensity={intensity} />
 }
 
-const TOP = 4.5
+const TOP = HILL.top
 const _wp = new THREE.Vector3()
 
 // The grand glowing gate itself (custom so it can emit light / bloom).
@@ -20,8 +22,7 @@ function GrandGate() {
     const t = s.clock.elapsedTime
     if (portal.current) { const k = 1 + Math.sin(t * 1.4) * 0.05; portal.current.scale.set(k, k, k); portal.current.material.opacity = (0.7 + Math.sin(t * 2.1) * 0.14) * THREE.MathUtils.smoothstep(portal.current.getWorldPosition(_wp).distanceTo(s.camera.position), 3, 9) }
     // These additive planes are big enough to fill the screen if the camera gets
-    // close, which it now does — you can walk right up the hill. Fade them out
-    // by camera distance so approaching the summit never whites out the view.
+    // close. Fade them out by camera distance so approaching never whites out.
     const near = (m, full, from, to) => {
       if (!m) return
       const d = m.getWorldPosition(_wp).distanceTo(s.camera.position)
@@ -39,22 +40,17 @@ function GrandGate() {
 
   return (
     <group position={[0, TOP, 0]}>
-      {/* posts */}
       {[-3, 3].map((x) => (
         <mesh key={x} position={[x, 5, 0]} castShadow><cylinderGeometry args={[0.4, 0.5, 10, 14]} /><Gold intensity={1.1} /></mesh>
       ))}
-      {/* nuki */}
       <mesh position={[0, 7, 0]} castShadow><boxGeometry args={[7.6, 0.6, 0.7]} /><Gold intensity={1.1} /></mesh>
-      {/* kasagi + upturned caps */}
       <mesh position={[0, 9.4, 0]} castShadow><boxGeometry args={[9.2, 0.7, 1.0]} /><Gold intensity={1.3} /></mesh>
       {[-4.4, 4.4].map((x) => (
         <mesh key={x} position={[x, 9.65, 0]} rotation={[0, 0, x < 0 ? 0.2 : -0.2]}><boxGeometry args={[1.4, 0.5, 1.05]} /><Gold intensity={1.3} /></mesh>
       ))}
       <mesh position={[0, 9.9, 0]}><boxGeometry args={[0.8, 0.5, 1.1]} /><Gold intensity={1.6} /></mesh>
-      {/* gakuzuka tablet */}
       <mesh position={[0, 8.2, 0.1]}><boxGeometry args={[1.0, 1.0, 0.15]} /><Gold intensity={1.8} color={C.goldLite} /></mesh>
 
-      {/* portal */}
       <mesh ref={portal} position={[0, 5, 0]}>
         <circleGeometry args={[3.4, 56]} />
         <meshBasicMaterial color={C.goldLite} transparent opacity={0.78} side={THREE.DoubleSide} toneMapped={false} />
@@ -63,76 +59,62 @@ function GrandGate() {
         <planeGeometry args={[16, 16]} />
         <meshBasicMaterial color={C.gold} transparent opacity={0.34} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
       </mesh>
-      {/* rings */}
       <mesh ref={ring1} position={[0, 5, 0.05]}><torusGeometry args={[3.7, 0.1, 8, 72]} /><meshBasicMaterial color={C.goldLite} toneMapped={false} /></mesh>
       <mesh ref={ring2} position={[0, 5, 0.05]}><torusGeometry args={[4.3, 0.06, 8, 72]} /><meshBasicMaterial color={C.vermilionLite} toneMapped={false} transparent opacity={0.8} /></mesh>
       <mesh ref={ring3} position={[0, 5, 0]}><torusGeometry args={[4.9, 0.04, 8, 64]} /><meshBasicMaterial color={C.goldLite} toneMapped={false} transparent opacity={0.5} /></mesh>
 
-      {/* beam */}
-      {/* Starts well above head height: an open additive cylinder that the camera
-          can stand inside washes the entire screen gold when you reach the gate. */}
       <mesh ref={beam} position={[0, 46, 0]}><cylinderGeometry args={[3.6, 1.4, 56, 28, 1, true]} /><meshBasicMaterial color={C.goldLite} transparent opacity={0.22} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} /></mesh>
 
-      {/* floating wisps */}
       {Array.from({ length: 7 }).map((_, i) => (
         <mesh key={i} ref={(el) => (floats.current[i] = el)}><icosahedronGeometry args={[0.18, 0]} /><meshBasicMaterial color={i % 2 ? C.goldLite : C.vermilionLite} toneMapped={false} /></mesh>
       ))}
 
-      <pointLight position={[0, 6, 1]} color={C.gold} intensity={9} distance={34} decay={2} />
+      <pointLight position={[0, 6, 1]} color={C.gold} intensity={9} distance={40} decay={2} />
     </group>
   )
 }
 
-export default function SahlokaGate() {
-  // A torii avenue leading up the path to the summit (vermilion → gold).
-  const avenue = useMemo(() => {
-    const out = []
-    for (let i = 0; i < 6; i++) {
-      const localZ = -16 - i * 6
-      const s = 1.0 + i * 0.12
-      const col = new THREE.Color(C.vermilion).lerp(new THREE.Color(C.gold), i / 5)
-      out.push({ localZ, s, color: `#${col.getHexString()}` })
-    }
-    return out
-  }, [])
-
+export default function SahlokaGate({ arch }) {
+  const steps = Math.round((HILL.rBot - HILL.rTop) / 1.1)
   return (
-    <group position={[SAHLOKA.x, 0, SAHLOKA.z]}>
-      {/* hill */}
-      <mesh position={[0, TOP / 2, 0]} receiveShadow castShadow>
-        <cylinderGeometry args={[7, 15, TOP, 40]} />
-        <meshToonMaterial gradientMap={gradientMap} color={C.leafDark} />
-      </mesh>
-      <mesh position={[0, TOP + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[7, 36]} />
-        <meshToonMaterial gradientMap={gradientMap} color={C.leaf} />
-      </mesh>
-      {/* glow ring on plateau */}
-      <mesh position={[0, TOP + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[5.5, 6.6, 48]} />
-        <meshBasicMaterial color={C.gold} transparent opacity={0.4} toneMapped={false} />
-      </mesh>
+    <group>
+      {/* the entrance gate and the avenue: real torii, vermilion lacquer */}
+      <Prop bundle={arch} name="torii" x={0} z={entranceGate.z} s={entranceGate.s} paint={C.vermilion} />
+      {avenue.map((g, i) => <Prop key={i} bundle={arch} name="torii" x={0} z={g.z} s={g.s} paint={`#${new THREE.Color(C.vermilion).lerp(new THREE.Color(C.gold), i / 5).getHexString()}`} />)}
 
-      {/* steps */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <mesh key={i} position={[0, TOP - 0.28 - i * 0.5, -7 - i * 0.95]} receiveShadow castShadow>
-          <boxGeometry args={[4.2 - i * 0.12, 0.5, 1.05]} />
-          <meshToonMaterial gradientMap={gradientMap} color={C.stone} />
+      {/* a temple looms behind the gate: the world on the other side */}
+      <Prop bundle={arch} name="temple" x={temple.x} z={temple.z} s={temple.s} rot={Math.PI} />
+
+      <group position={[SAHLOKA.x, 0, SAHLOKA.z]}>
+        {/* hill */}
+        <mesh position={[0, TOP / 2, 0]} receiveShadow castShadow>
+          <cylinderGeometry args={[HILL.rTop, HILL.rBot, TOP, 48]} />
+          <meshToonMaterial gradientMap={gradientMap} color={C.leafDark} />
         </mesh>
-      ))}
+        <mesh position={[0, TOP + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <circleGeometry args={[HILL.rTop, 40]} />
+          <meshToonMaterial gradientMap={gradientMap} color={C.leaf} />
+        </mesh>
+        <mesh position={[0, TOP + 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[6.4, 7.6, 56]} />
+          <meshBasicMaterial color={C.gold} transparent opacity={0.4} toneMapped={false} />
+        </mesh>
 
-      {/* torii avenue up the path */}
-      {avenue.map((a, i) => <Torii key={i} position={[0, 0, a.localZ]} scale={a.s} color={a.color} />)}
+        {/* steps up the south face */}
+        {Array.from({ length: steps }).map((_, i) => (
+          <mesh key={i} position={[0, TOP - 0.25 - i * (TOP / steps), -HILL.rTop - i * 1.1]} receiveShadow castShadow>
+            <boxGeometry args={[4.6 - i * 0.08, 0.5, 1.15]} />
+            <meshToonMaterial gradientMap={gradientMap} color={C.stone} />
+          </mesh>
+        ))}
 
-      {/* The approach is already lit by the path lanterns in layout.js — this
-          component used to add its own at z = 56, 44 and 32, which landed on top
-          of them (two lanterns in the same spot at z=44). Removed. */}
-      <StoneLantern position={[-5, TOP, -4]} scale={1.3} />
-      <StoneLantern position={[5, TOP, -4]} scale={1.3} />
-      <StoneLantern position={[-5.5, TOP, 2]} scale={1.2} />
-      <StoneLantern position={[5.5, TOP, 2]} scale={1.2} />
+        <StoneLantern position={[-6, TOP, -4]} scale={1.4} />
+        <StoneLantern position={[6, TOP, -4]} scale={1.4} />
+        <StoneLantern position={[-6.5, TOP, 3]} scale={1.3} />
+        <StoneLantern position={[6.5, TOP, 3]} scale={1.3} />
 
-      <GrandGate />
+        <GrandGate />
+      </group>
     </group>
   )
 }

@@ -62,16 +62,16 @@ button { font-family: inherit; cursor: pointer; }
 }
 .chip .muted { color: rgba(239,231,214,0.6); }
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
-.sound-btn {
-  position: fixed; top: 18px; right: 20px; z-index: 20;
+.top-right { position: fixed; top: 18px; right: 20px; z-index: 20; display: flex; gap: 8px; }
+.round-btn {
   width: 38px; height: 38px; border-radius: 999px;
   background: var(--panel); border: 1px solid var(--hair); color: var(--washi);
   font-size: 15px; line-height: 1; backdrop-filter: blur(8px);
   display: grid; place-items: center;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
-.sound-btn:hover { transform: translateY(-1px); border-color: var(--gold); }
-.sound-btn:focus-visible { outline: 2px solid var(--gold-lite); outline-offset: 3px; }
+.round-btn:hover { transform: translateY(-1px); border-color: var(--gold); }
+.round-btn:focus-visible { outline: 2px solid var(--gold-lite); outline-offset: 3px; }
 
 .controls {
   position: fixed; bottom: 18px; left: 20px; z-index: 20;
@@ -137,8 +137,11 @@ button { font-family: inherit; cursor: pointer; }
 /* ── Tally: lanterns lit, scrolls found ───────────────────────────── */
 .tally {
   position: fixed; top: 64px; left: 20px; z-index: 20;
-  display: flex; gap: 8px; align-items: center;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer;
 }
+.tally:hover span { border-color: rgba(230,178,77,0.5); }
+.tally:focus-visible { outline: 2px solid var(--gold-lite); outline-offset: 3px; border-radius: 999px; }
 .tally span {
   background: var(--panel); border: 1px solid var(--hair); border-radius: 999px;
   padding: 5px 12px; font-size: 12.5px; color: rgba(239,231,214,0.85);
@@ -156,61 +159,11 @@ button { font-family: inherit; cursor: pointer; }
 .photo-hint {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
   z-index: 20; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: rgba(239,231,214,0.45); pointer-events: none;
+  color: rgba(239,231,214,0.45); background: none; border: 0; padding: 10px 14px; font-family: inherit;
 }
 .photo-hint b { color: rgba(239,231,214,0.7); }
 
 @media (max-width: 560px) { .tally { top: 60px; } }
-
-/* ── A scroll, unrolled ───────────────────────────────────────────── */
-.scroll-wrap {
-  position: fixed; inset: 0; z-index: 32;
-  display: grid; place-items: center;
-  background: rgba(8, 10, 18, 0.62);
-  backdrop-filter: blur(3px);
-  animation: fadein 0.25s ease;
-}
-.scroll-card {
-  width: min(520px, calc(100vw - 48px));
-  /* Its own keyframe: `rise` carries translate(-50%) for the prompt, which is
-     positioned with left:50%. This card is grid-centred, so borrowing that
-     animation shifted it left and then snapped it back when the animation ended. */
-  animation: unroll 0.32s cubic-bezier(0.2, 0.9, 0.3, 1);
-}
-@keyframes unroll {
-  from { opacity: 0; transform: translateY(14px) scaleY(0.92); }
-  to   { opacity: 1; transform: none; }
-}
-.scroll-rod {
-  height: 14px; border-radius: 7px;
-  background: linear-gradient(180deg, #a97f4e, #6d4c2a);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-}
-.scroll-rod.top { margin-bottom: -2px; }
-.scroll-rod.bottom { margin-top: -2px; }
-.scroll-body {
-  background: linear-gradient(180deg, #efe4cc, #e2d4b6);
-  padding: 34px 34px 38px;
-  box-shadow: inset 0 0 60px rgba(150, 120, 70, 0.28), 0 24px 60px -24px rgba(0,0,0,0.7);
-}
-.scroll-kicker {
-  font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase;
-  color: #9a7a4a; margin-bottom: 16px;
-}
-.scroll-text {
-  font-family: var(--font-d); font-size: clamp(19px, 3vw, 25px); line-height: 1.5;
-  color: #2f2417; margin: 0;
-}
-.scroll-close {
-  margin: 18px auto 0; display: flex; align-items: center; gap: 10px;
-  background: transparent; border: 1px solid var(--hair); border-radius: 999px;
-  color: rgba(239,231,214,0.75); font-size: 13px; padding: 9px 18px;
-}
-.scroll-close:hover { color: var(--washi); border-color: var(--gold); }
-.scroll-close .key {
-  font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.14);
-  border-radius: 5px; padding: 2px 6px;
-}
 
 /* the rank sits ahead of the counters — it is the thing that changed */
 .tally .rank {
@@ -220,48 +173,6 @@ button { font-family: inherit; cursor: pointer; }
   text-transform: uppercase;
   font-size: 11.5px;
   font-weight: 600;
-}
-
-/* ── A villager, talking ──────────────────────────────────────────── */
-.speech-wrap {
-  position: fixed; inset: 0; z-index: 31;
-  display: grid; place-items: end center;
-  padding-bottom: 8vh;
-  background: linear-gradient(to top, rgba(8,10,18,0.55), transparent 38%);
-  animation: fadein 0.22s ease;
-}
-.speech-card {
-  width: min(560px, calc(100vw - 40px));
-  background: var(--panel);
-  border: 1px solid var(--hair);
-  border-left: 3px solid var(--gold);
-  border-radius: 14px;
-  padding: 20px 24px 22px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 24px 60px -30px rgba(0,0,0,0.85);
-  animation: speak 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
-}
-@keyframes speak {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: none; }
-}
-.speech-who {
-  font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
-  color: var(--gold-lite); margin-bottom: 10px;
-}
-.speech-line {
-  font-family: var(--font-d); font-size: clamp(16px, 2.3vw, 20px);
-  line-height: 1.55; color: var(--washi); margin: 0 0 16px;
-}
-.speech-close {
-  background: transparent; border: 1px solid var(--hair); border-radius: 999px;
-  color: rgba(239,231,214,0.72); font-size: 12.5px; padding: 7px 15px;
-  display: inline-flex; align-items: center; gap: 8px;
-}
-.speech-close:hover { color: var(--washi); border-color: var(--gold); }
-.speech-close .key {
-  font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.14);
-  border-radius: 5px; padding: 2px 6px;
 }
 
 /* ── the seal breaking ─────────────────────────────────────────────── */
@@ -312,3 +223,222 @@ button { font-family: inherit; cursor: pointer; }
 .tc-actions { display: flex; gap: .7rem; justify-content: center; flex-wrap: wrap; }
 .tc-ghost { background: transparent; color: #cfc7ba; box-shadow: inset 0 0 0 1px rgba(207,199,186,.32); }
 .tc-ghost:hover { background: rgba(207,199,186,.1); color: #f6efe4; }
+
+/* ── Intro legend and the dossier link ────────────────────────────── */
+.legend {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px;
+  margin-top: 22px; font-size: 12.5px; color: rgba(239,231,214,0.7); letter-spacing: 0.01em;
+}
+.legend b { color: var(--gold-lite); font-weight: 600; }
+.link-btn {
+  background: transparent; border: 1px solid rgba(230,178,77,0.5); color: var(--gold-lite);
+  border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+  transition: background 0.15s ease;
+}
+.link-btn:hover { background: rgba(230,178,77,0.12); }
+.link-btn:focus-visible { outline: 2px solid var(--gold-lite); outline-offset: 3px; }
+
+/* ── Compass: the nearest thing left to do ────────────────────────── */
+.compass {
+  position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 20;
+  display: flex; align-items: center; gap: 8px; pointer-events: none;
+  background: var(--panel); border: 1px solid var(--hair); border-radius: 999px;
+  padding: 7px 14px 7px 10px; backdrop-filter: blur(8px);
+  font-size: 12.5px; color: rgba(239,231,214,0.85); white-space: nowrap;
+  max-width: min(46vw, 360px); overflow: hidden; text-overflow: ellipsis;
+}
+.compass .arrow { display: inline-block; width: 16px; text-align: center; color: var(--gold-lite); font-size: 13px; line-height: 1; }
+.compass .label { overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Small notices: quest progress, hints ─────────────────────────── */
+.notice {
+  position: fixed; top: 68px; left: 50%; transform: translateX(-50%); z-index: 25;
+  background: var(--panel); border: 1px solid rgba(230,178,77,0.45); color: var(--gold-lite);
+  border-radius: 999px; padding: 8px 16px; font-size: 13px; letter-spacing: 0.02em;
+  backdrop-filter: blur(8px); pointer-events: none; white-space: nowrap;
+  max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis;
+  animation: pop 0.35s cubic-bezier(0.2,1.4,0.4,1);
+}
+
+/* ── The journal: a drawer, the world keeps running behind it ────── */
+.journal-wrap {
+  position: fixed; inset: 0; z-index: 33; pointer-events: none;
+  display: flex; justify-content: flex-end;
+}
+.journal {
+  pointer-events: auto; width: min(560px, 100%); height: 100%; overflow: auto; overscroll-behavior: contain;
+  background: linear-gradient(180deg, rgba(30,26,20,0.94), rgba(18,16,12,0.96));
+  border-left: 1px solid var(--hair); padding: 26px 26px 20px;
+  box-shadow: -30px 0 80px -30px rgba(0,0,0,0.9); backdrop-filter: blur(6px);
+  animation: slideIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.q-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.q-kicker { font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold-lite); margin-bottom: 8px; }
+.q-head h2 { font-family: var(--font-d); font-weight: 600; font-size: clamp(26px, 4vw, 34px); line-height: 1.05; letter-spacing: 0.01em; }
+.q-title { margin-top: 6px; font-size: 14px; color: rgba(239,231,214,0.75); }
+.q-close {
+  flex: none; width: 34px; height: 34px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--hair); color: rgba(239,231,214,0.8); font-size: 14px;
+}
+.q-close:hover { border-color: var(--gold); color: var(--washi); }
+.q-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.q-links a {
+  color: var(--gold-lite); text-decoration: none; font-size: 12.5px; font-weight: 600;
+  border: 1px solid rgba(230,178,77,0.4); border-radius: 999px; padding: 6px 12px;
+}
+.q-links a:hover { background: rgba(230,178,77,0.12); }
+.q-bio { margin-top: 18px; }
+.q-bio p { font-family: var(--font-d); font-size: 16px; line-height: 1.55; color: rgba(239,231,214,0.9); margin-bottom: 8px; }
+.journal section { margin-top: 24px; }
+.q-sec {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold-lite); margin-bottom: 10px;
+}
+.q-pct { letter-spacing: 0.04em; text-transform: none; color: rgba(239,231,214,0.7); font-variant-numeric: tabular-nums; }
+.q-bar { height: 6px; border-radius: 999px; background: rgba(239,231,214,0.1); overflow: hidden; margin-bottom: 12px; }
+.q-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-lite)); border-radius: 999px; transition: width 0.4s ease; }
+.q-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.q-list li {
+  display: grid; grid-template-columns: 22px 1fr auto; column-gap: 8px; align-items: baseline;
+  padding: 8px 10px; border-radius: 10px; background: rgba(239,231,214,0.04);
+}
+.q-list li.done { background: rgba(230,178,77,0.08); }
+.q-list li.done .q-name { color: var(--gold-lite); }
+.q-check { color: var(--gold-lite); font-weight: 700; text-align: center; }
+.q-name { font-size: 14px; font-weight: 600; }
+.q-count { font-size: 12.5px; color: rgba(239,231,214,0.65); font-variant-numeric: tabular-nums; }
+.q-hint { grid-column: 2 / -1; font-size: 12.5px; color: rgba(239,231,214,0.55); line-height: 1.45; margin-top: 2px; }
+.q-list li.secret .q-name { color: rgba(239,231,214,0.6); font-style: italic; }
+.q-list li.secret.done .q-name { color: var(--gold-lite); font-style: normal; }
+.p-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.p-list li {
+  display: grid; grid-template-columns: 14px 1fr auto; column-gap: 12px; align-items: center;
+  padding: 12px 12px; border-radius: 12px; background: rgba(239,231,214,0.04); border: 1px solid transparent;
+}
+.p-list li.seen { border-color: rgba(230,178,77,0.3); }
+.p-list li.sahloka { background: linear-gradient(180deg, rgba(60,44,18,0.5), rgba(23,20,15,0.5)); border-color: rgba(230,178,77,0.45); }
+.p-dot { width: 10px; height: 10px; border-radius: 50%; }
+.p-dot.gold { background: var(--gold); box-shadow: 0 0 12px var(--gold); }
+.p-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.p-top b { font-family: var(--font-d); font-size: 17px; font-weight: 600; }
+.p-tag { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-lite); }
+.p-body p { margin-top: 4px; font-size: 13px; line-height: 1.5; color: rgba(239,231,214,0.75); }
+.p-link {
+  flex: none; color: #fff; background: var(--indigo); text-decoration: none; font-size: 12.5px; font-weight: 600;
+  border-radius: 9px; padding: 8px 12px; white-space: nowrap; transition: filter 0.12s ease;
+}
+.p-link:hover { filter: brightness(1.12); }
+.p-link.gold { background: linear-gradient(180deg, var(--gold), #c8902f); color: #2b1e08; }
+.q-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 22px; font-size: 12px; color: rgba(239,231,214,0.5); }
+.q-reset { background: transparent; border: 1px solid var(--hair); color: rgba(239,231,214,0.7); border-radius: 999px; padding: 6px 12px; font-size: 12px; }
+.q-reset:hover { border-color: var(--vermilion); color: var(--washi); }
+@media (max-width: 560px) {
+  .journal { padding: 20px 16px 16px; }
+  .p-list li { grid-template-columns: 10px 1fr; }
+  .p-link { grid-column: 2; justify-self: start; margin-top: 8px; }
+}
+
+/* ── Touch controls ───────────────────────────────────────────────── */
+.touch-ui {
+  position: fixed; inset: 0; z-index: 21; pointer-events: none;
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.joy {
+  position: absolute; left: max(22px, env(safe-area-inset-left)); bottom: max(26px, env(safe-area-inset-bottom));
+  width: 128px; height: 128px; border-radius: 50%; pointer-events: auto; touch-action: none;
+  background: rgba(23,20,15,0.35); border: 1px solid var(--hair); backdrop-filter: blur(6px);
+}
+.joy .knob {
+  position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+  background: rgba(239,231,214,0.32); border: 1px solid rgba(239,231,214,0.5); will-change: transform;
+}
+.touch-btns {
+  position: absolute; right: max(22px, env(safe-area-inset-right)); bottom: max(26px, env(safe-area-inset-bottom));
+  display: flex; align-items: flex-end; gap: 14px; pointer-events: auto;
+}
+.tbtn {
+  width: 60px; height: 60px; border-radius: 50%; touch-action: none;
+  background: rgba(23,20,15,0.5); border: 1px solid var(--hair); color: var(--washi);
+  font-size: 22px; line-height: 1; backdrop-filter: blur(6px);
+}
+.tbtn:active { background: rgba(230,178,77,0.35); border-color: var(--gold); }
+.tbtn.big { width: 76px; height: 76px; font-size: 30px; }
+body.touch canvas { -webkit-touch-callout: none; }
+body.touch .prompt { bottom: 150px; width: min(360px, calc(100vw - 40px)); padding: 14px 16px 16px; }
+body.touch .prompt-blurb { font-size: 13px; margin-bottom: 12px; }
+body.touch .key { display: none; }
+body.touch .controls { display: none; }
+
+/* narrow screens: the compass drops under the tally instead of fighting the chip */
+@media (max-width: 720px) {
+  .compass { top: auto; bottom: auto; top: 104px; left: 20px; transform: none; max-width: calc(100vw - 40px); }
+  .notice { top: 146px; }
+  .chip { max-width: calc(100vw - 120px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+}
+
+/* ── A scroll, unrolled at the edge of the screen ─────────────────── */
+.scroll-toast {
+  position: fixed; right: 20px; bottom: 90px; z-index: 22;
+  width: min(380px, calc(100vw - 40px));
+  animation: unroll 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes unroll {
+  from { opacity: 0; transform: translateY(14px) scaleY(0.92); }
+  to   { opacity: 1; transform: none; }
+}
+.scroll-rod {
+  height: 12px; border-radius: 6px;
+  background: linear-gradient(180deg, #a97f4e, #6d4c2a);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+.scroll-rod.top { margin-bottom: -2px; }
+.scroll-rod.bottom { margin-top: -2px; }
+.scroll-body {
+  background: linear-gradient(180deg, #efe4cc, #e2d4b6);
+  padding: 20px 22px 16px;
+  box-shadow: inset 0 0 60px rgba(150, 120, 70, 0.28), 0 24px 60px -24px rgba(0,0,0,0.7);
+}
+.scroll-kicker { font-size: 10.5px; letter-spacing: 0.24em; text-transform: uppercase; color: #9a7a4a; margin-bottom: 10px; }
+.scroll-text { font-family: var(--font-d); font-size: 17px; line-height: 1.45; color: #2f2417; margin: 0 0 10px; }
+.scroll-close {
+  background: transparent; border: 1px solid rgba(90, 65, 30, 0.35); border-radius: 999px;
+  color: #6d4c2a; font-size: 11.5px; padding: 5px 12px;
+}
+.scroll-close:hover { border-color: #6d4c2a; }
+body.touch .scroll-toast { bottom: 190px; right: 12px; width: min(300px, calc(100vw - 150px)); }
+
+/* ── Speech bubbles, anchored in the world ────────────────────────── */
+.bubble {
+  width: max-content; max-width: 260px;
+  background: rgba(239,231,214,0.96); color: #2b2318;
+  border-radius: 14px; padding: 10px 14px 11px;
+  box-shadow: 0 12px 30px -12px rgba(0,0,0,0.8);
+  animation: pop 0.3s cubic-bezier(0.2,1.4,0.4,1);
+  position: relative; transform: translateY(-10px);
+}
+.bubble::after {
+  content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -8px;
+  border: 8px solid transparent; border-bottom: 0; border-top-color: rgba(239,231,214,0.96);
+}
+.bubble-who { font-size: 9.5px; letter-spacing: 0.2em; text-transform: uppercase; color: #9a6a2a; margin-bottom: 3px; }
+.bubble-line { font-family: var(--font-d); font-size: 14.5px; line-height: 1.4; }
+
+/* ── The aim chip: what F would throw at ──────────────────────────── */
+.aim {
+  position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); z-index: 20;
+  display: none; align-items: center; gap: 8px; pointer-events: none;
+  background: var(--panel); border: 1px solid rgba(230,178,77,0.5); border-radius: 999px;
+  padding: 6px 14px 6px 8px; backdrop-filter: blur(8px); font-size: 12.5px; color: rgba(239,231,214,0.85);
+  animation: pop 0.25s cubic-bezier(0.2,1.4,0.4,1);
+}
+.aim.on { display: flex; }
+.aim-key { background: rgba(255,255,255,0.16); border-radius: 6px; padding: 2px 8px; font-weight: 700; font-size: 11px; color: var(--gold-lite); }
+.aim-verb { color: rgba(239,231,214,0.6); }
+.aim b { color: var(--gold-lite); font-weight: 600; }
+body.touch .aim { bottom: 128px; }
+.prompt ~ .aim, body.touch .prompt ~ .aim { display: none; }
+
+/* ── Scrolls found, in the journal ────────────────────────────────── */
+.s-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.s-list li { font-family: var(--font-d); font-size: 15px; line-height: 1.45; color: rgba(239,231,214,0.88); padding: 8px 12px; border-radius: 10px; background: rgba(239,231,214,0.05); }

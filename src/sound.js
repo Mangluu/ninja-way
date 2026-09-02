@@ -15,6 +15,40 @@ export function initAudio() {
 // Master bus (falls back to the raw output if a sound fires before init).
 function out() { return master || ctx.destination }
 
+// A hall to put the struck things in. The impulse is synthesised: a burst of
+// noise with an exponential tail and a handful of early reflections, which is
+// most of what a real room adds. Only the metal and the drum go through it.
+let verb = null
+function reverb() {
+  if (verb) return verb
+  const c = initAudio()
+  const len = Math.floor(c.sampleRate * 2.6)
+  const ir = c.createBuffer(2, len, c.sampleRate)
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch)
+    for (let i = 0; i < len; i++) {
+      const t = i / c.sampleRate
+      d[i] = (Math.random() * 2 - 1) * Math.exp(-t * 2.6) * (t < 0.01 ? t / 0.01 : 1)
+    }
+    // early reflections, a few milliseconds apart, slightly different per ear
+    for (const [ms, g] of [[11, 0.5], [23, 0.35], [37, 0.28], [53, 0.2]]) {
+      const i = Math.floor((ms + ch * 3) * c.sampleRate / 1000)
+      if (i < len) d[i] += g * (ch ? -1 : 1)
+    }
+  }
+  const conv = c.createConvolver(); conv.buffer = ir
+  const wet = c.createGain(); wet.gain.value = 0.42
+  conv.connect(wet).connect(out())
+  verb = conv
+  return verb
+}
+// connect a node to both the dry output and the hall
+function wetDry(node, send = 0.5) {
+  node.connect(out())
+  const g = ctx.createGain(); g.gain.value = send
+  node.connect(g).connect(reverb())
+}
+
 // Ramped, not switched — an instant cut clicks.
 export function setMuted(muted) {
   if (!master) return
@@ -25,42 +59,6 @@ function env(node, t, a, d, peak = 0.5) {
   node.gain.setValueAtTime(0.0001, t)
   node.gain.exponentialRampToValueAtTime(peak, t + a)
   node.gain.exponentialRampToValueAtTime(0.0001, t + a + d)
-}
-
-// THE SNAP — an impact: noise burst + a descending thump + a rising sweep.
-export function snapSound() {
-  const c = initAudio()
-  const t = c.currentTime
-  // noise burst
-  const n = c.createBufferSource()
-  const buf = c.createBuffer(1, c.sampleRate * 0.3, c.sampleRate)
-  const data = buf.getChannelData(0)
-  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2)
-  n.buffer = buf
-  const ng = c.createGain()
-  env(ng, t, 0.005, 0.25, 0.4)
-  n.connect(ng).connect(out())
-  n.start(t)
-  // thump
-  const o = c.createOscillator()
-  o.type = 'sine'
-  o.frequency.setValueAtTime(180, t)
-  o.frequency.exponentialRampToValueAtTime(40, t + 0.35)
-  const og = c.createGain()
-  env(og, t, 0.005, 0.4, 0.6)
-  o.connect(og).connect(out())
-  o.start(t)
-  o.stop(t + 0.5)
-  // rising sweep
-  const s = c.createOscillator()
-  s.type = 'sawtooth'
-  s.frequency.setValueAtTime(120, t + 0.05)
-  s.frequency.exponentialRampToValueAtTime(900, t + 0.5)
-  const sg = c.createGain()
-  env(sg, t + 0.05, 0.02, 0.45, 0.15)
-  s.connect(sg).connect(out())
-  s.start(t + 0.05)
-  s.stop(t + 0.6)
 }
 
 // soft pling when entering a memory
@@ -181,17 +179,36 @@ export function lightUp() {
   })
 }
 
-// the shrine bell: a struck partial stack with a long decay
-export function bellRing() {
+// The shrine bell. A real bell is a stack of partials that are not quite in
+// tune with each other, each dying at its own rate, over a low hum; a clapper
+// adds a short bright knock. Two of the partials beat slowly against a
+// detuned twin, which is the shimmer you hear on a struck bronze.
+export function bellRing(vel = 1) {
   const c = initAudio(), t = c.currentTime
-  ;[[440, 0.22], [660, 0.13], [1320, 0.07], [1980, 0.04]].forEach(([f, amp]) => {
-    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t)
-    const g = c.createGain()
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.exponentialRampToValueAtTime(amp, t + 0.008)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.2)
-    o.connect(g).connect(out()); o.start(t); o.stop(t + 3.3)
+  const bus = c.createGain(); bus.gain.value = 0.9 * vel
+  wetDry(bus, 0.7)
+  const f0 = 523
+  const partials = [[0.5, 0.35, 5.0], [1, 1.0, 3.8], [2.0, 0.55, 2.8], [2.41, 0.32, 2.2], [3.01, 0.36, 1.9], [4.16, 0.2, 1.4], [5.43, 0.12, 1.0], [6.8, 0.06, 0.7]]
+  partials.forEach(([r, amp, dec], i) => {
+    const twins = i === 1 || i === 2 ? [-1.4, 1.4] : [0]
+    twins.forEach((dt) => {
+      const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0 * r + dt, t)
+      const g = c.createGain()
+      g.gain.setValueAtTime(0.0001, t)
+      g.gain.exponentialRampToValueAtTime((amp / twins.length) * 0.22, t + 0.006)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dec)
+      o.connect(g).connect(bus); o.start(t); o.stop(t + dec + 0.05)
+    })
   })
+  // the clapper
+  const n = c.createBufferSource()
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * 0.05), c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3)
+  n.buffer = buf
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 1.2
+  const ng = c.createGain(); ng.gain.value = 0.25
+  n.connect(bp).connect(ng).connect(bus); n.start(t)
 }
 
 // picking up a scroll
@@ -245,29 +262,38 @@ export function crateHit(vol = 1) {
   o.connect(og).connect(out()); o.start(t); o.stop(t + 0.18)
 }
 
-// the great drum — deep, loud, and long. Two body tones an octave apart plus a
-// hard rim slap; this should feel like it moves air.
-export function taikoHit() {
+// The great drum. The skin rings down in pitch as it settles, the barrel adds
+// a second, higher body an octave up that dies faster, the stick gives a
+// short slap, and the hall does the rest. A little random pitch per hit so a
+// roll never sounds like a loop.
+export function taikoHit(vel = 1) {
   const c = initAudio(), t = c.currentTime
-  ;[[126, 0.62, 1.5], [63, 0.42, 1.9]].forEach(([f, amp, len]) => {
+  const bus = c.createGain(); bus.gain.value = Math.min(vel, 1.2)
+  wetDry(bus, 0.55)
+  const jit = 1 + (Math.random() - 0.5) * 0.08
+  ;[[92 * jit, 40 * jit, 0.9, 1.35], [176 * jit, 84 * jit, 0.32, 0.5], [58 * jit, 34 * jit, 0.5, 1.8]].forEach(([f1, f2, amp, len]) => {
     const o = c.createOscillator(); o.type = 'sine'
-    o.frequency.setValueAtTime(f, t)
-    o.frequency.exponentialRampToValueAtTime(f * 0.34, t + len * 0.6)
+    o.frequency.setValueAtTime(f1, t)
+    o.frequency.exponentialRampToValueAtTime(f2, t + len * 0.5)
     const g = c.createGain()
     g.gain.setValueAtTime(0.0001, t)
-    g.gain.exponentialRampToValueAtTime(amp, t + 0.005)
+    g.gain.exponentialRampToValueAtTime(amp, t + 0.004)
     g.gain.exponentialRampToValueAtTime(0.0001, t + len)
-    o.connect(g).connect(out()); o.start(t); o.stop(t + len + 0.1)
+    o.connect(g).connect(bus); o.start(t); o.stop(t + len + 0.1)
   })
-  // the stick hitting hide
+  // stick on hide: a slap with a touch of skin resonance
   const n = c.createBufferSource()
-  const buf = c.createBuffer(1, c.sampleRate * 0.26, c.sampleRate)
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * 0.18), c.sampleRate)
   const d = buf.getChannelData(0)
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.4)
   n.buffer = buf
-  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 460; bp.Q.value = 0.7
-  const ng = c.createGain(); env(ng, t, 0.003, 0.26, 0.34)
-  n.connect(bp).connect(ng).connect(out()); n.start(t)
+  const slap = c.createBiquadFilter(); slap.type = 'bandpass'; slap.frequency.value = 520; slap.Q.value = 0.7
+  const sg = c.createGain(); env(sg, t, 0.002, 0.16, 0.5)
+  n.connect(slap).connect(sg).connect(bus)
+  const skin = c.createBiquadFilter(); skin.type = 'bandpass'; skin.frequency.value = 170 * jit; skin.Q.value = 6
+  const kg = c.createGain(); env(kg, t, 0.003, 0.3, 0.6)
+  n.connect(skin).connect(kg).connect(bus)
+  n.start(t)
 }
 
 // leaves rustling when a tree is shaken
@@ -392,4 +418,23 @@ export function gateCatch(i = 0) {
   o.frequency.setValueAtTime(220 * Math.pow(2, i / 12), t)
   o.frequency.exponentialRampToValueAtTime(660 * Math.pow(2, i / 12), t + 0.5)
   o.connect(g); o.start(t); o.stop(t + 0.75)
+}
+
+// a shuriken leaving the hand: a short bright whip of air and a thin ring of steel
+export function shing() {
+  const c = initAudio(), t = c.currentTime
+  const n = c.createBufferSource()
+  const buf = c.createBuffer(1, c.sampleRate * 0.22, c.sampleRate)
+  const d = buf.getChannelData(0)
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.4)
+  n.buffer = buf
+  const hp = c.createBiquadFilter(); hp.type = 'highpass'
+  hp.frequency.setValueAtTime(1400, t); hp.frequency.exponentialRampToValueAtTime(5200, t + 0.18)
+  const g = c.createGain(); env(g, t, 0.008, 0.2, 0.16)
+  n.connect(hp).connect(g); wetDry(g, 0.3); n.start(t)
+  ;[2650, 3980].forEach((f, i) => {
+    const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t)
+    const og = c.createGain(); env(og, t, 0.004, 0.14 - i * 0.04, 0.05)
+    o.connect(og).connect(out()); o.start(t); o.stop(t + 0.25)
+  })
 }

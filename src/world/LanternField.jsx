@@ -17,7 +17,7 @@ const PARTS = [
   { geo: () => new THREE.SphereGeometry(0.08, 8, 8), y: 1.72, color: C.stone },
 ]
 
-export default function LanternField({ lanterns, lit, scale = 0.85 }) {
+export default function LanternField({ lanterns, lit, scale = 1.05 }) {
   const tex = stone(1, 1)
 
   const parts = useMemo(() => PARTS.map((p) => {

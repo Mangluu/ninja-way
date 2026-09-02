@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { C } from '../data/content'
@@ -21,8 +21,32 @@ const SIZE = 0.62
 const GRAV = 22
 const REST_EPS = 0.35
 
-export default function Crates({ stacks, playerRef }) {
+export default function Crates({ stacks, playerRef, onScatter, api }) {
   const meshes = useRef([])
+  const onScatterRef = useRef(onScatter); onScatterRef.current = onScatter
+
+  // A star or a kick from outside: shove everything near the point.
+  useEffect(() => {
+    if (!api) return
+    api.current = {
+      hit: (x, z, power = 1) => {
+        let any = false
+        for (const c of crates) {
+          const dx = c.pos.x - x, dz = c.pos.z - z, d = Math.hypot(dx, dz)
+          if (d > 1.9) continue
+          const k = (1 - d / 1.9) * (4 + power * 3)
+          c.vel.x += (dx / (d || 1)) * k; c.vel.z += (dz / (d || 1)) * k
+          c.vel.y += 3 + Math.random() * 2
+          c.spin.set((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10)
+          if (c.resting && onScatterRef.current) onScatterRef.current()
+          c.resting = false; any = true
+        }
+        if (any) try { crateHit(1) } catch {}
+        return any
+      },
+    }
+    return () => { api.current = null }
+  })
   const tex = woodBoards(1, 1)
 
   const crates = useMemo(() => {
@@ -68,6 +92,7 @@ export default function Crates({ stacks, playerRef }) {
           c.vel.z += (dz / (d || 1)) * push
           c.vel.y += 2.2 + Math.random() * 1.3
           c.spin.set((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9)
+          if (c.resting && onScatterRef.current) onScatterRef.current()
           c.resting = false
           try { crateHit(0.9) } catch {}
         }

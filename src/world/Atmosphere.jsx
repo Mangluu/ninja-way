@@ -2,6 +2,9 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { texGlow, texWisp } from '../lib/textures'
+import { WORLD } from '../data/content'
+
+const W = WORLD.maxX - WORLD.minX, L = WORLD.maxZ - WORLD.minZ
 
 // Atmosphere: the drifting light and haze that make the village feel like a place
 // rather than a set. Particle motion lives entirely in the vertex shader, so the
@@ -18,7 +21,7 @@ function canvasTex(canvas) {
 }
 
 // ── Fireflies: warm motes that rise, sway and fade ───────────────────────────
-function Fireflies({ count = 110 }) {
+function Fireflies({ count = 220 }) {
   const uT = useRef({ value: 0 })
   const tex = useMemo(() => canvasTex(texGlow('rgba(255,216,150,1)', 'rgba(255,150,60,0.35)')), [])
 
@@ -26,9 +29,9 @@ function Fireflies({ count = 110 }) {
     const pos = new Float32Array(count * 3)
     const seed = new Float32Array(count)
     for (let i = 0; i < count; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 46
+      pos[i * 3] = WORLD.minX + 4 + Math.random() * (W - 8)
       pos[i * 3 + 1] = Math.random() * 7
-      pos[i * 3 + 2] = Math.random() * 84 - 8
+      pos[i * 3 + 2] = WORLD.minZ + Math.random() * L
       seed[i] = Math.random()
     }
     const g = new THREE.BufferGeometry()
@@ -69,13 +72,13 @@ function Fireflies({ count = 110 }) {
 }
 
 // ── Low mist: soft sheets that drift across the ground ───────────────────────
-function GroundMist({ count = 7 }) {
+function GroundMist({ count = 14 }) {
   const group = useRef()
   const tex = useMemo(() => canvasTex(texWisp()), [])
   const sheets = useMemo(() => Array.from({ length: count }, (_, i) => ({
-    x: (Math.random() - 0.5) * 50,
+    x: (Math.random() - 0.5) * 70,
     y: 0.5 + Math.random() * 0.9,
-    z: i * 12 - 6 + Math.random() * 6,
+    z: WORLD.minZ + i * (L / count) + Math.random() * 6,
     s: 16 + Math.random() * 14,
     drift: Math.random() * 6.28,
     speed: 0.1 + Math.random() * 0.12,
@@ -105,7 +108,7 @@ function GroundMist({ count = 7 }) {
 
 
 // ── Rain: falling streaks, toggled on demand ─────────────────────────────────
-function Rain({ count = 850 }) {
+function Rain({ count = 1400 }) {
   const uT = useRef({ value: 0 })
   const geo = useMemo(() => {
     // two verts per drop so each renders as a short vertical streak
@@ -114,7 +117,7 @@ function Rain({ count = 850 }) {
     const speed = new Float32Array(count * 2)
     const len = new Float32Array(count * 2)
     for (let i = 0; i < count; i++) {
-      const x = (Math.random() - 0.5) * 60, z = Math.random() * 90 - 10, y = Math.random() * 20
+      const x = (Math.random() - 0.5) * 90, z = WORLD.minZ + Math.random() * L, y = Math.random() * 20
       const sp = 9 + Math.random() * 10, ln = 0.35 + Math.random() * 0.6
       for (let k = 0; k < 2; k++) {
         const o = (i * 2 + k) * 3

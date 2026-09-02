@@ -53,7 +53,7 @@ export const SAHLOKA = {
   name: 'SAHLOKA',
   blurb: 'A living world where AI residents lead their own lives — and you drop in to watch, befriend, and join them. It remembers you. The one I am betting everything on.',
   link: 'https://sahloka.com',
-  x: 0, z: 74, y: 4, // raised on the hill
+  x: 0, z: 126, y: 5, // raised on the hill at the far end of the valley
 }
 
 // Discoverable project spots — glowing lanterns you wander up to. Optional, not a tour.
@@ -62,37 +62,37 @@ export const projects = [
     id: 'passage', name: 'Passage', tag: 'b_hack 2026 · Winner',
     blurb: 'How safe and free will you be abroad — specific to who you are, every fact sourced and dated. Provenance over plausibility.',
     link: 'https://mangluu.github.io/passage/', cta: 'Open Passage', color: C.celadon,
-    x: -7, z: 16,
+    x: -10, z: 22,
   },
   {
     id: 'visbaltic', name: 'VisBaltic', tag: 'b_hack 2025 · Winner',
     blurb: 'An open, source-cited map of how climate change is reshaping the Baltic Sea — and real initiatives to act on it. Turning scary data into action.',
     link: 'https://mangluu.github.io/visbaltic/', cta: 'Open VisBaltic', color: C.celadon,
-    x: 8, z: 24,
+    x: 11, z: 36,
   },
   {
     id: 'sayit', name: 'Say It, Slay It', tag: 'Game Jam · Leiden · Winner',
     blurb: 'Shout something ridiculous, the AI forges it into a weapon, and you fling it at a friend. A game that is useless without human creativity — then it won a jam.',
     link: 'https://github.com/Mangluu/Say-It-Slay-It', cta: 'See the code', color: C.vermilionLite,
-    x: -9, z: 34,
+    x: -12, z: 54,
   },
   {
     id: 'explaindb', name: 'ExplainDB', tag: 'Aalto AI Hackathon',
     blurb: 'Talk to your database like you talk to ChatGPT — but better: graphs, recommendations, plain language. 48 hours, 2 developers, a lot of pizza.',
     link: 'https://github.com/Mangluu/ExplainDB', cta: 'View on GitHub', color: C.indigo,
-    x: 9, z: 40,
+    x: 12, z: 70,
   },
   {
     id: 'haptics', name: 'Virtual Playing, Real Touch', tag: 'CHI 2026 · Barcelona',
     blurb: 'My PhD work on the haptics of musical instruments — play virtual instruments and feel how touch changes VR. Watching people get competitive with it was the best part.',
     link: 'https://dl.acm.org/doi/full/10.1145/3772363.3799160', cta: 'The research', color: C.gold,
-    x: -8, z: 50,
+    x: -11, z: 86,
   },
   {
     id: 'overleaf', name: 'overleaf-comments-export', tag: '★ Most-starred tool',
     blurb: 'Export Overleaf comments and tracked changes to clean Markdown + JSON. A small sharp tool that scratched my own itch — and others’ too.',
     link: 'https://github.com/Mangluu/overleaf-comments-export', cta: 'View on GitHub', color: C.gold,
-    x: 8, z: 58,
+    x: 11, z: 98,
   },
 ]
 
@@ -104,7 +104,7 @@ export const facts = [
 ]
 
 // World bounds (XZ). Forward toward Sahloka is +Z.
-export const WORLD = { minX: -22, maxX: 22, minZ: -8, maxZ: 82 }
+export const WORLD = { minX: -40, maxX: 40, minZ: -16, maxZ: 150 }
 
 // ── The rank ladder ─────────────────────────────────────────────────────────
 // Every lantern you light changes the character. The four named ranks are the
@@ -155,3 +155,42 @@ export function senseiProgress(lit) {
   if (lit >= 1) return 'The plate is on the band. One lantern lit. A start is not nothing.'
   return 'An academy student passes. He has lit nothing at all. The village stays exactly as dark as he found it.'
 }
+
+// ── The quest log ────────────────────────────────────────────────────────────
+// Everything the village asks of a visitor, in one list. `key` names the set in
+// the save that tracks it; the one-offs share the `done` set and carry an `id`.
+export const QUESTS = [
+  { key: 'seen',  name: 'Discover the six projects', total: 6, hint: 'Glowing orbs on stone plinths, either side of the path.' },
+  { key: 'lit',   name: 'Light the six stone lanterns', total: 6, hint: 'Cold and grey along the path. Every one of them changes him.' },
+  { key: 'found', name: 'Find the five hidden scrolls', total: 5, hint: 'Off the path, behind things, for people who wander.' },
+  { key: 'heard', name: 'Hear out the three villagers', total: 3, hint: 'They talk about him. Not always kindly.' },
+  { key: 'hit',   name: 'Hit the five training targets', total: 5, hint: 'Left of the path as you come through the entrance gate. Tap one, or face it and press F.' },
+  { key: 'done', id: 'bell',   name: 'Ring the shrine bell', hint: 'Bronze, left of the path, halfway through the village.' },
+  { key: 'done', id: 'taiko',  name: 'Strike the great drum', hint: 'In the square, past the ramen cook.' },
+  { key: 'done', id: 'tree',   name: 'Shake blossom from a cherry tree', hint: 'Any of them will do.' },
+  { key: 'done', id: 'crates', name: 'Knock over a crate stack', hint: 'Sprint straight through one.' },
+  { key: 'done', id: 'summit', name: 'Climb to the summit gate', hint: 'Up the torii avenue, at the far end.' },
+]
+
+// Listed as ??? until found.
+export const SECRETS = [
+  { id: 'konami', name: 'Believe it', hint: 'An old code. Up, up, down, down.' },
+  { id: 'siuuu',  name: 'SIUUU', hint: 'Celebrate. Press X.' },
+]
+
+export function questProgress(save, q) {
+  return q.key === 'done' ? (save.done.has(q.id) ? 1 : 0) : Math.min(save[q.key].size, q.total)
+}
+
+export function completion(save) {
+  let got = 0, total = 0
+  for (const q of QUESTS) { got += questProgress(save, q); total += q.total || 1 }
+  return { got, total, pct: Math.round((got / total) * 100) }
+}
+
+// The dossier, for anyone who wants the facts without the walk.
+export const BIO = [
+  'Shivang builds worlds. He is an XR researcher working toward a D.Sc at Tampere, studying how touch changes what people feel in virtual reality.',
+  "His CHI 2026 paper puts virtual instruments in people's hands and measures what real haptics add. On weekends he wins hackathons with teams he names after Naruto and Marvel.",
+  'He is now betting everything on Sahloka, a living world where AI residents lead their own lives and remember the people who visit.',
+]

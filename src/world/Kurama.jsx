@@ -98,7 +98,7 @@ export default function Kurama({ lit = 0, playerRef, freed = false }) {
   }), [])
 
   return (
-    <group ref={root} position={[HILL.x - 30, 1, HILL.z + 26]} rotation={[0, Math.PI, 0]}>
+    <group ref={root} position={[HILL.x - 27, 1, HILL.z + 12]} rotation={[0, Math.PI, 0]}>
       {/* long body, chest up, weight on the forelegs */}
       <mesh position={[0, 1.85, -0.4]} scale={[1.45, 1.45, 2.85]} material={fur}>
         <sphereGeometry args={[1, 16, 14]} />

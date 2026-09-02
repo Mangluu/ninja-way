@@ -1,11 +1,14 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Stars } from '@react-three/drei'
 import * as THREE from 'three'
-import { C, ENV, projects } from '../data/content'
+import { C, ENV, WORLD, projects } from '../data/content'
 import { gradientMap } from '../lib/toon'
 import { groundMat, stone } from '../lib/materials'
-import { Torii, House, StoneLantern, LanternPost, Sakura, Pine, Rock, Scroll, Bell, Taiko } from './props'
-import { houses, sakura, pines, rocks, pathLanterns, hangingLanterns, scrolls, bell, crateStacks, taiko, villagers, groundHeight } from './layout'
+import { House, StoneLantern, LanternPost, Scroll, Bell, Taiko, FallenPetals } from './props'
+import { useNature, useArch, Prop, Instanced } from './props3d'
+import { houses, sakura, pines, forest, rocks, grass, flowers, bushes, mushrooms, fences, stream, bridge, lilies, camp, pathLanterns, hangingLanterns, scrolls, bell, shrine, crateStacks, taiko, villagers, targets, groundHeight } from './layout'
+import { Target } from './Shuriken'
 import SahlokaGate from './SahlokaGate'
 import Atmosphere from './Atmosphere'
 import LightBudget from './LightBudget'
@@ -16,8 +19,9 @@ import Villager from './Villager'
 import Crates from './Crates'
 
 function Toon(p) { return <meshToonMaterial gradientMap={gradientMap} {...p} /> }
+const MID_Z = (WORLD.minZ + WORLD.maxZ) / 2
 
-// ── Gradient dusk sky (unaffected by fog) ────────────────────────────────────
+// ── Gradient night sky (unaffected by fog) ───────────────────────────────────
 function Sky() {
   const uniforms = useMemo(() => ({
     top: { value: new THREE.Color(ENV.skyTop) },
@@ -25,7 +29,7 @@ function Sky() {
     bottom: { value: new THREE.Color(ENV.skyBottom) },
   }), [])
   return (
-    <mesh scale={[300, 300, 300]}>
+    <mesh scale={[600, 600, 600]}>
       <sphereGeometry args={[1, 32, 24]} />
       <shaderMaterial
         side={THREE.BackSide} fog={false} depthWrite={false} uniforms={uniforms}
@@ -45,32 +49,32 @@ function Sky() {
 // ── The moon, sitting where the key light comes from ────────────────────────
 function Moon() {
   return (
-    <group position={[150, 190, -70]}>
+    <group position={[260, 300, -120]}>
       <mesh>
-        <sphereGeometry args={[16, 24, 24]} />
+        <sphereGeometry args={[24, 24, 24]} />
         <meshBasicMaterial color={ENV.moon} toneMapped={false} fog={false} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[30, 20, 20]} />
+        <sphereGeometry args={[46, 20, 20]} />
         <meshBasicMaterial color={ENV.moon} transparent opacity={0.10} blending={THREE.AdditiveBlending} depthWrite={false} fog={false} />
       </mesh>
     </group>
   )
 }
 
-// ── Distant misty mountains (silhouette depth, fades into fog) ────────────────
+// ── Distant mountains (silhouette depth, fades into fog) ─────────────────────
 function Mountains() {
   const items = useMemo(() => {
     const a = []
-    for (let i = 0; i < 18; i++) {
-      const ang = (i / 18) * Math.PI * 2
-      const r = 78 + (i % 4) * 9
-      a.push({ x: Math.cos(ang) * r, z: 36 + Math.sin(ang) * r * 0.9, h: 26 + (i % 5) * 7, w: 22 + (i % 3) * 7, rot: ang })
+    for (let i = 0; i < 22; i++) {
+      const ang = (i / 22) * Math.PI * 2
+      const r = 150 + (i % 4) * 16
+      a.push({ x: Math.cos(ang) * r, z: MID_Z + Math.sin(ang) * r * 0.95, h: 44 + (i % 5) * 12, w: 38 + (i % 3) * 12, rot: ang })
     }
     return a
   }, [])
   return items.map((m, i) => (
-    <mesh key={i} position={[m.x, -5, m.z]} rotation={[0, m.rot, 0]}>
+    <mesh key={i} position={[m.x, -8, m.z]} rotation={[0, m.rot, 0]}>
       <coneGeometry args={[m.w, m.h, 5]} />
       <meshToonMaterial gradientMap={gradientMap} color={i % 2 ? C.indigoDeep : C.indigo} flatShading />
     </mesh>
@@ -78,11 +82,11 @@ function Mountains() {
 }
 
 // ── Drifting sakura petals ───────────────────────────────────────────────────
-function Petals({ count = 120 }) {
+function Petals({ count = 200 }) {
   const mesh = useRef()
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const data = useMemo(() => Array.from({ length: count }, () => ({
-    x: (Math.random() - 0.5) * 60, z: Math.random() * 84 - 8, y: Math.random() * 20,
+    x: (Math.random() - 0.5) * 70, z: WORLD.minZ + Math.random() * (WORLD.maxZ - WORLD.minZ), y: Math.random() * 20,
     s: 0.09 + Math.random() * 0.08, rot: Math.random() * 6, spin: (Math.random() - 0.5) * 2,
     fall: 0.6 + Math.random() * 0.8, drift: Math.random() * 6,
   })), [count])
@@ -117,7 +121,7 @@ function ProjectSpot({ x, z, color }) {
     if (ringRef.current) ringRef.current.rotation.z = t * 0.5
   })
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, groundHeight(x, z), z]}>
       <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.9, 1.15, 32]} />
         <meshBasicMaterial color={color} transparent opacity={0.5} toneMapped={false} />
@@ -137,57 +141,160 @@ function ProjectSpot({ x, z, color }) {
   )
 }
 
-export default function Scene({ sealBroken = false, freed = false, lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {} }) {
+// ── A cherry tree that sways, and shakes when told to ────────────────────────
+function SakuraTree({ bundle, kind, x, z, s, seed, shookAt }) {
+  const g = useRef()
+  useFrame((st) => {
+    if (!g.current) return
+    const t = st.clock.elapsedTime
+    let sway = Math.sin(t * 0.8 + seed) * 0.02
+    if (shookAt) {
+      const dt = (performance.now() - shookAt) / 1000
+      if (dt < 2.5) sway += Math.sin(dt * 13) * Math.exp(-dt * 1.8) * 0.09
+    }
+    g.current.rotation.z = sway
+    g.current.rotation.x = sway * 0.6
+  })
+  return (
+    <group position={[x, groundHeight(x, z), z]}>
+      <group ref={g}>
+        <Prop bundle={bundle} name={kind} x={0} z={0} y={-groundHeight(x, z)} s={s} rot={seed * 1.3} />
+      </group>
+      <group scale={1.9} position={[0, 1.2, 0]}><FallenPetals shookAt={shookAt} count={34} /></group>
+    </group>
+  )
+}
+
+// ── The cook's fire ──────────────────────────────────────────────────────────
+function Camp({ bundle }) {
+  const light = useRef()
+  useFrame((st) => { if (light.current) light.current.intensity = 3.2 + Math.sin(st.clock.elapsedTime * 11) * 0.5 + Math.sin(st.clock.elapsedTime * 23) * 0.3 })
+  return (
+    <group>
+      <Prop bundle={bundle} name="campfire_logs" x={camp.x} z={camp.z} s={3.2} />
+      <Prop bundle={bundle} name="campfire_stones" x={camp.x} z={camp.z} s={3.2} />
+      <Prop bundle={bundle} name="pot_large" x={camp.x + 1.8} z={camp.z - 0.6} s={3} rot={0.4} />
+      <Prop bundle={bundle} name="pot_small" x={camp.x + 2.4} z={camp.z + 0.9} s={3} rot={1.1} />
+      <Prop bundle={bundle} name="log_large" x={camp.x - 0.4} z={camp.z + 2.6} s={3} rot={0.2} />
+      <Prop bundle={bundle} name="log_stack" x={camp.x + 3} z={camp.z + 2.2} s={2.8} rot={0.9} />
+      <mesh position={[camp.x, groundHeight(camp.x, camp.z) + 0.45, camp.z]}>
+        <coneGeometry args={[0.32, 0.8, 7]} />
+        <meshBasicMaterial color={C.orangeLite} toneMapped={false} transparent opacity={0.9} />
+      </mesh>
+      <pointLight ref={light} position={[camp.x, groundHeight(camp.x, camp.z) + 1.1, camp.z]} color={C.orange} intensity={3.2} distance={11} decay={2} />
+    </group>
+  )
+}
+
+// ── The stream and the bridge over it ────────────────────────────────────────
+function Stream({ bundle }) {
+  const mat = useRef()
+  useFrame((st) => { if (mat.current) mat.current.emissiveIntensity = 0.3 + Math.sin(st.clock.elapsedTime * 1.3) * 0.08 })
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, stream.z]} receiveShadow>
+        <planeGeometry args={[WORLD.maxX - WORLD.minX, stream.halfWidth * 2]} />
+        <meshToonMaterial ref={mat} gradientMap={gradientMap} color="#3b6a99" emissive="#1b3a5c" emissiveIntensity={0.3} transparent opacity={0.86} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, stream.z + side * (stream.halfWidth + 0.35)]}>
+          <planeGeometry args={[WORLD.maxX - WORLD.minX, 0.7]} />
+          <Toon color={C.dirt} />
+        </mesh>
+      ))}
+      <Prop bundle={bundle} name="bridge_wood" x={bridge.x} z={bridge.z} y={-groundHeight(bridge.x, bridge.z) - 0.02} s={bridge.s} rot={Math.PI / 2} />
+      {lilies.map((l, i) => <Prop key={i} bundle={bundle} name={i % 2 ? 'lily_large' : 'lily_small'} x={l.x} z={l.z} y={0.06} s={3} rot={i * 1.7} />)}
+    </group>
+  )
+}
+
+// A shadow that follows the player: a tight frustum stays crisp everywhere in
+// a valley this size, where one covering the whole map would smear.
+function FollowLight({ playerRef }) {
+  const light = useRef()
+  const target = useMemo(() => new THREE.Object3D(), [])
+  useFrame(() => {
+    const p = playerRef?.current
+    if (!light.current || !p) return
+    light.current.position.set(p.x + 18, 30, p.z - 8)
+    target.position.set(p.x, 0, p.z)
+    target.updateMatrixWorld()
+  })
+  return (
+    <>
+      <directionalLight
+        ref={light} intensity={0.85} color={ENV.sun} castShadow target={target}
+        shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.02}
+        shadow-camera-near={1} shadow-camera-far={90}
+        shadow-camera-left={-34} shadow-camera-right={34} shadow-camera-top={34} shadow-camera-bottom={-34}
+      />
+      <primitive object={target} />
+    </>
+  )
+}
+
+export default function Scene({ sealBroken = false, freed = false, lit, found, rungAt = 0, raining = false, playerRef, taikoAt = 0, shaken = {}, hit, struck = {}, onScatter, cratesApi, bubbles = {}, rivalHitAt = 0 }) {
   const litCount = lit?.size || 0
+  const nature = useNature()
+  const arch = useArch()
+  const reduced = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
   return (
     <>
       <LightBudget />
       <Sky />
+      <Stars radius={320} depth={80} count={2600} factor={3.2} saturation={0.1} fade speed={0.3} />
       <Moon />
       <Mountains />
-      <Petals count={window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 24 : 120} />
+      <Petals count={reduced ? 40 : 200} />
 
       {/* lighting: a cool moon key, kept low so lantern light reads */}
-      <hemisphereLight args={[ENV.skyTop, ENV.ground, 0.30]} />
-      <ambientLight intensity={0.09} />
-      <directionalLight
-        position={[18, 30, -8]} intensity={0.85} color={ENV.sun} castShadow
-        shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004}
-        shadow-camera-near={1} shadow-camera-far={110}
-        shadow-camera-left={-45} shadow-camera-right={45} shadow-camera-top={45} shadow-camera-bottom={-45}
-      />
+      <hemisphereLight args={[ENV.skyTop, ENV.ground, 0.32]} />
+      <ambientLight intensity={0.1} />
+      <FollowLight playerRef={playerRef} />
 
       {/* ground + path */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 34]} receiveShadow>
-        <planeGeometry args={[130, 150]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, MID_Z]} receiveShadow>
+        <planeGeometry args={[220, 280]} />
         <Toon color={ENV.ground} {...groundMat(1, 1)} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 30]} receiveShadow>
-        <planeGeometry args={[4.4, 78]} />
-        <Toon color={C.dirt} {...stone(2, 34)} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 48]} receiveShadow>
+        <planeGeometry args={[4.4, 122]} />
+        <Toon color={C.dirt} {...stone(2, 54)} />
       </mesh>
+      <Stream bundle={nature} />
 
-      {/* entrance torii */}
-      <Torii position={[0, 0, -5]} scale={1.5} />
+      {/* the valley: forest, pines, rocks, meadow */}
+      <Instanced bundle={nature} items={forest} />
+      <Instanced bundle={nature} items={pines} />
+      <Instanced bundle={nature} items={rocks} />
+      <Instanced bundle={nature} items={grass} />
+      <Instanced bundle={nature} items={flowers} />
+      <Instanced bundle={nature} items={bushes} />
+      <Instanced bundle={nature} items={mushrooms} />
+      <Instanced bundle={nature} items={fences} />
+      {sakura.map((t, i) => <SakuraTree key={i} bundle={nature} kind={t.kind} x={t.x} z={t.z} s={t.s} seed={t.seed} shookAt={shaken[`tree-${i}`] || 0} />)}
 
       {/* village */}
-      {houses.map((h, i) => <House key={i} position={[h.x, groundHeight(h.x, h.z), h.z]} rotation={[0, h.rot, 0]} tone={h.tone} />)}
-      {sakura.map((s, i) => <Sakura key={i} position={[s.x, groundHeight(s.x, s.z), s.z]} scale={s.s} seed={s.seed} shookAt={shaken[`tree-${i}`] || 0} />)}
-      {pines.map((p, i) => <Pine key={i} position={[p.x, groundHeight(p.x, p.z), p.z]} scale={p.s} />)}
-      {rocks.map((r, i) => <Rock key={i} position={[r.x, groundHeight(r.x, r.z), r.z]} scale={r.s} rotation={[0, r.rot, 0]} />)}
+      {houses.map((h, i) => <House key={i} position={[h.x, groundHeight(h.x, h.z), h.z]} rotation={[0, h.rot, 0]} tone={h.tone} scale={1.15} />)}
       <LanternField lanterns={pathLanterns} lit={lit} />
-      {hangingLanterns.map((l, i) => <LanternPost key={i} position={[l.x, groundHeight(l.x, l.z), l.z]} color={l.color} />)}
+      {hangingLanterns.map((l, i) => <LanternPost key={i} position={[l.x, groundHeight(l.x, l.z), l.z]} color={l.color} scale={1.15} />)}
+      <Camp bundle={nature} />
+      <Prop bundle={arch} name="shrine" x={shrine.x} z={shrine.z} rot={shrine.rot} s={shrine.s} />
 
       {/* things to find and do */}
       {scrolls.map((sc) => <Scroll key={sc.id} position={[sc.x, groundHeight(sc.x, sc.z), sc.z]} found={!!found?.has(sc.id)} />)}
       <Bell position={[bell.x, groundHeight(bell.x, bell.z), bell.z]} rungAt={rungAt} />
-      <Crates stacks={crateStacks} playerRef={playerRef} />
+      <Crates stacks={crateStacks} playerRef={playerRef} onScatter={onScatter} api={cratesApi} />
       <Taiko position={[taiko.x, groundHeight(taiko.x, taiko.z), taiko.z]} hitAt={taikoAt} />
+      {targets.map((t) => <Target key={t.id} position={[t.x, groundHeight(t.x, t.z), t.z]} hit={!!hit?.has(t.id)} hitAt={struck[t.id] || 0} />)}
 
       {/* discoverable projects */}
       {projects.map((p) => <ProjectSpot key={p.id} x={p.x} z={p.z} color={p.color} />)}
 
-      {villagers.map((v) => <Villager key={v.id} kind={v.kind} anchor={[v.x, v.z]} radius={v.r} />)}
+      {villagers.map((v) => (
+        <Villager key={v.id} kind={v.kind} name={v.name} anchor={[v.x, v.z]} facing={v.facing} playerRef={playerRef}
+          say={bubbles[v.kind]} hitAt={v.kind === 'rival' ? rivalHitAt : 0} />
+      ))}
 
       <Kurama lit={litCount} playerRef={playerRef} freed={freed} />
       <Finale active={sealBroken} />
@@ -195,7 +302,7 @@ export default function Scene({ sealBroken = false, freed = false, lit, found, r
       <Atmosphere raining={raining} />
 
       {/* the star */}
-      <SahlokaGate />
+      <SahlokaGate arch={arch} />
     </>
   )
 }
